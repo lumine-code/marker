@@ -1,0 +1,54 @@
+{
+  "name": "marker",
+  "author": "lumine-code",
+  "description": "Host the marker layers drawn on the scrollbar and minimap.",
+  "repository": "https://github.com/lumine-code/marker",
+  "bugs": {
+    "url": "https://github.com/lumine-code/marker/issues"
+  },
+  "keywords": [
+    "overview-ruler",
+    "scrollmap",
+    "minimap",
+    "annotation",
+    "decoration",
+    "layers"
+  ],
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": {
+    "atom": ">=1.100.0 <2.0.0"
+  },
+  "main": "./lib/main",
+  "scripts": {
+    "test": "cd ../../lumine && npm run test:only -- ../pkg_lumine/marker/spec",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "consumedServices": {
+    "marker.layer": {
+      "versions": {
+        "^1.0.0": "consumeMarkerLayer"
+      }
+    }
+  },
+  "providedServices": {
+    "marker.registry": {
+      "versions": {
+        "1.0.0": "provideMarkerRegistry"
+      }
+    }
+  },
+  "dependencies": {
+    "@lumine-code/select-list": "https://github.com/lumine-code/select-list.git#a201dae6a0ea6954cb9a905be4a718af697d9f78"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-n": "^18.2.2",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.6"
+  }
+}

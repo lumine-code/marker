@@ -115,7 +115,7 @@ With `merge` you return raw, unsorted ranges and leave ordering and merging to t
 
 A class that resolves to no background colour draws nothing, and each renderer reports it once — usually a stylesheet still scoped to one map.
 
-Registering a second layer under a name that is already taken logs a warning and returns a no-op `Disposable`; the second layer never draws. Nothing else reports a mistake — a misspelled service name, or a `provideMarkerLayer` that is not exported from the main module, produces no error at all. Run `npm run check:services` to catch the second.
+Registering a second layer under a name that is already taken logs a warning and returns a no-op `Disposable`; the second layer never draws. Nothing else reports a mistake — a misspelled service name, or a `provideMarkerLayer` that is not exported from the main module, produces no error at all: the layer simply never arrives.
 
 If a layer registers but never appears, open the renderer's layer picker first: a layer the user has disabled looks exactly like one that never registered. The maps keep separate lists, so a layer can be on in one and off in the other.
 

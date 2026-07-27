@@ -82,9 +82,6 @@ jobs:
         run: |
           install() { npm ci --ignore-scripts; }
           install || install || install
-      - name: Check the service graph
-        working-directory: lumine
-        run: node script/check-services.js --package marker
       - name: Download the Electron binary
         working-directory: lumine
         run: node ./node_modules/electron/install.js

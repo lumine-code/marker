@@ -149,6 +149,7 @@ describe("layer picker", () => {
       expect(atom.modals.isOpen()).toBe(true);
       expect(activeSession().getFocusedItem().name).toBe("layer2");
       expect(iconClasses()).toEqual(["check", "slash"]);
+      expect(visibleLabels()).toEqual(["layer1", "layer2"]);
 
       confirm();
       await settle();

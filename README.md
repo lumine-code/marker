@@ -10,7 +10,7 @@ Layer packages such as `marker-git-diff` or `marker-linter` register a descripto
 - **Layer lifecycle**: the hub owns per-editor layers, their throttles, caches and subscriptions, and tears them down when the last map lets go.
 - **Draw toolkit**: maps draw through hub-supplied canvas machinery, so one stylesheet rule in a layer package paints identically everywhere.
 - **Style probes**: marker colors, opacity and stacking are resolved from ordinary CSS, and a layer that resolves to no color is reported once instead of failing silently.
-- **Layer pickers**: each map gets its own select-list picker over the same registry, bound to its own disabled-layers setting.
+- **Layer pickers**: each map gets its own picker over the same registry, bound to its own disabled-layers setting.
 
 ## Installation
 

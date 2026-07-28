@@ -44,6 +44,8 @@ interface Registry {
   drawRegions(canvas, styles, regions, width, height): void;
   resolveLength(value: string, basis: number, fallback?: number): number;
   resizeCanvas(canvas, width, height): CanvasRenderingContext2D;
+  // An `atom.modals` view; its id is derived from `disabledKey`, so each map's
+  // list toggles and is scoped on its own.
   createPicker(options: {
     className: string;
     emptyMessage: string;

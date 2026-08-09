@@ -73,7 +73,7 @@ interface Layer {
 
 ```js
 const ROW = 3; // px per screen row in this toy map
-const disabled = () => atom.config.get("mymap.disabledLayers") ?? [];
+const disabled = () => lumine.config.get("mymap.disabledLayers") ?? [];
 
 module.exports = {
   consumeMarkerRegistry(registry) {
@@ -98,7 +98,7 @@ module.exports = {
     };
 
     return new CompositeDisposable(
-      atom.workspace.observeTextEditors((editor) => {
+      lumine.workspace.observeTextEditors((editor) => {
         const view = {
           handle: registry.attach(editor),
           canvas: new registry.MarkerCanvas({ className: "mymap" }),

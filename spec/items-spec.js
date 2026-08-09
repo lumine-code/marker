@@ -33,7 +33,7 @@ describe("items", () => {
   // The threshold hides at draw time, per renderer. Emptying here would throw
   // away the items every renderer below its own scaled limit still wants.
   it("ignores the threshold entirely", () => {
-    atom.config.set("marker.specThreshold", 2);
+    lumine.config.set("marker.specThreshold", 2);
     const props = { name: "spec", threshold: "marker.specThreshold" };
     expect(normalizeItems([{ row: 1 }, { row: 2 }, { row: 3 }], props).length).toBe(3);
   });

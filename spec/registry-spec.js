@@ -2,20 +2,20 @@ describe("marker registry", () => {
   let workspaceElement, mainModule, service;
 
   async function activate() {
-    const pack = await atom.packages.activatePackage("marker");
+    const pack = await lumine.packages.activatePackage("marker");
     mainModule = pack.mainModule;
     service = mainModule.provideMarkerRegistry();
     return mainModule;
   }
 
   async function makeEditor() {
-    const editor = await atom.workspace.open();
+    const editor = await lumine.workspace.open();
     editor.setText(Array.from({ length: 10 }, (_, i) => `line ${i}`).join("\n"));
     return editor;
   }
 
   beforeEach(async () => {
-    workspaceElement = atom.views.getView(atom.workspace);
+    workspaceElement = lumine.views.getView(lumine.workspace);
     workspaceElement.style.width = "800px";
     workspaceElement.style.height = "600px";
     jasmine.attachToDOM(workspaceElement);
@@ -141,7 +141,7 @@ describe("marker registry", () => {
     });
 
     it("keeps layer.limit current without re-running getItems", async () => {
-      atom.config.set("marker.specThreshold", 2);
+      lumine.config.set("marker.specThreshold", 2);
       const getItems = jasmine
         .createSpy("getItems")
         .and.returnValue([{ row: 0 }, { row: 3 }, { row: 6 }]);
@@ -164,7 +164,7 @@ describe("marker registry", () => {
       expect(scale(2)).toBe(false);
 
       const computes = getItems.calls.count();
-      atom.config.set("marker.specThreshold", 5);
+      lumine.config.set("marker.specThreshold", 5);
 
       expect(layer.limit).toBe(5);
       expect(changed).toHaveBeenCalled();
@@ -272,7 +272,7 @@ describe("marker registry", () => {
       const handle = service.attach(editor);
       handle.update();
 
-      await atom.packages.deactivatePackage("marker");
+      await lumine.packages.deactivatePackage("marker");
 
       advanceClock(30);
       expect(getItems).not.toHaveBeenCalled();

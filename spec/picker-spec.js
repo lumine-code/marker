@@ -2,15 +2,15 @@ describe("layer picker", () => {
   let mainModule, service;
 
   async function activate() {
-    const pack = await atom.packages.activatePackage("marker");
+    const pack = await lumine.packages.activatePackage("marker");
     mainModule = pack.mainModule;
     service = mainModule.provideMarkerRegistry();
   }
 
   beforeEach(async () => {
     await activate();
-    atom.config.set("marker.specA.disabledLayers", []);
-    atom.config.set("marker.specB.disabledLayers", []);
+    lumine.config.set("marker.specA.disabledLayers", []);
+    lumine.config.set("marker.specB.disabledLayers", []);
   });
 
   function makePicker(disabledKey, extras) {
@@ -39,13 +39,13 @@ describe("layer picker", () => {
 
     pickerA.toggle({ name: "layer1" });
 
-    expect(atom.config.get("marker.specA.disabledLayers")).toEqual(["layer1"]);
-    expect(atom.config.get("marker.specB.disabledLayers")).toEqual([]);
+    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual(["layer1"]);
+    expect(lumine.config.get("marker.specB.disabledLayers")).toEqual([]);
     expect(pickerA.isEnabled({ name: "layer1" })).toBe(false);
     expect(pickerB.isEnabled({ name: "layer1" })).toBe(true);
 
     pickerA.toggle({ name: "layer1" });
-    expect(atom.config.get("marker.specA.disabledLayers")).toEqual([]);
+    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual([]);
     expect(pickerA.isEnabled({ name: "layer1" })).toBe(true);
 
     pickerA.destroy();
@@ -55,7 +55,7 @@ describe("layer picker", () => {
   it("reads the disabled list live rather than caching it", () => {
     const picker = makePicker("marker.specA.disabledLayers");
 
-    atom.config.set("marker.specA.disabledLayers", ["layer1"]);
+    lumine.config.set("marker.specA.disabledLayers", ["layer1"]);
 
     expect(picker.isEnabled({ name: "layer1" })).toBe(false);
     picker.destroy();
@@ -77,7 +77,7 @@ describe("layer picker", () => {
     expect(picker.isEnabled(extra)).toBe(true);
     picker.toggle(extra);
     expect(enabled).toBe(false);
-    expect(atom.config.get("marker.specA.disabledLayers")).toEqual([]);
+    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual([]);
     picker.destroy();
   });
 });

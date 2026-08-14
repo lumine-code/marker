@@ -14,12 +14,12 @@ Layer packages such as `marker-git-diff` or `marker-linter` register a descripto
 
 ## Installation
 
-To install `marker` search for _marker_ in the Install pane of the Lumine settings or run `lumine --install lumine-code/marker`.
+To install `marker` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/marker`.
 
 ## Services
 
-- **[marker.layer](docs/marker.layer.md)** (`^1.0.0`): consumed to let packages register marker layers with the hub.
-- **[marker.registry](docs/marker.registry.md)** (`1.0.0`): provided to the overview maps — every editor's computed layers plus the toolkit to draw them.
+- [`marker.layer`](docs/marker.layer.md): consumed to let packages register marker layers with the hub.
+- [`marker.registry`](docs/marker.registry.md): provided to the overview maps — every editor's computed layers plus the toolkit to draw them.
 
 ## Contributing
 

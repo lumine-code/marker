@@ -33,9 +33,9 @@ Export `consumeMarkerRegistry(registry)` from your main module and **return a `D
 interface Registry {
   // data
   attach(editor: TextEditor): AttachHandle; // refcounted
-  providers(): Descriptor[]; // registration order
+  providers(): Descriptor[]; // registration order, including providers currently switched off by their own `enabled` key
   onDidChangeItems(cb: (layer: Layer) => void): Disposable; // items or limit moved; layer.editor addresses the redraw
-  onDidChangeLayers(cb: () => void): Disposable; // a provider registered or unregistered
+  onDidChangeLayers(cb: () => void): Disposable; // a provider registered, unregistered, or its `enabled` key flipped
 
   // toolkit — constructors and pure functions, never instances
   classNameFor(props: Descriptor, item: Item): string; // "marker marker-<name> [position] [cls]"
@@ -61,6 +61,8 @@ interface AttachHandle {
   dispose(): void; // refcount release; idempotent
 }
 
+// Only enabled providers become layers; a provider switched off by its own
+// `enabled` key has none, anywhere.
 interface Layer {
   readonly name: string;
   readonly props: Descriptor; // what the provider registered
@@ -123,7 +125,7 @@ module.exports = {
 
 **Events are synchronous and editor-addressed.** `onDidChangeItems` fires from the hub's throttle with the layer that moved; look up your view by `layer.editor` and coalesce repaints yourself (both bundled maps use a rAF). `onDidChangeLayers` means the picker list and every map changed shape.
 
-**Filtering is yours; `limit` is the hub's.** The hub never reads a renderer's config. Observe your own `disabledLayers` and `thresholdScale` keys, cache their values, and skip layers at draw time: `disabled.includes(layer.name)`, then `layer.limit && layer.items.length > layer.limit * thresholdScale`. The hub keeps each `layer.limit` current and emits a change when it moves — without re-running `getItems`.
+**Filtering is yours; `limit` and `enabled` are the hub's.** The hub never reads a renderer's config. Observe your own `disabledLayers` and `thresholdScale` keys, cache their values, and skip layers at draw time: `disabled.includes(layer.name)`, then `layer.limit && layer.items.length > layer.limit * thresholdScale`. The hub keeps each `layer.limit` current and emits a change when it moves — without re-running `getItems`. A provider's `enabled` key is enforced upstream: while it is off the layer is simply absent from every handle's `layers()`, and the flip reaches you as `onDidChangeLayers` — you filter nothing.
 
 **Instantiate the toolkit per renderer.** `MarkerStyles` probes resolve percentage widths and offsets against the element you mount them in, and warn once per class that resolves to no colour, naming your map. Sharing an instance between two maps would give one of them the other's geometry.
 

@@ -31,6 +31,27 @@ describe("layer picker", () => {
     picker.destroy();
   });
 
+  // A layer switched off globally cannot draw on any map, so offering the
+  // per-renderer toggle for it would be a lie.
+  it("leaves a globally disabled provider out of the list", () => {
+    mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });
+    mainModule.consumeMarkerLayer({
+      name: "layer2",
+      enabled: "marker.specPickerEnabled",
+      getItems: () => [],
+    });
+    const picker = makePicker("marker.specA.disabledLayers");
+
+    lumine.config.set("marker.specPickerEnabled", false);
+    expect(picker.items().map((item) => item.name)).toEqual(["layer1"]);
+
+    lumine.config.set("marker.specPickerEnabled", true);
+    expect(picker.items().map((item) => item.name)).toEqual(["layer1", "layer2"]);
+
+    lumine.config.unset("marker.specPickerEnabled");
+    picker.destroy();
+  });
+
   // Two maps over one registry: each picker writes its own key and nothing else.
   it("keeps two pickers on separate disabled keys independent", () => {
     mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });

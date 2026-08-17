@@ -76,6 +76,149 @@ describe("marker registry", () => {
     });
   });
 
+  describe("enabled", () => {
+    afterEach(() => {
+      lumine.config.unset("marker.specEnabled");
+      lumine.config.unset("marker.specEnabledDup");
+    });
+
+    it("does not build a layer for a provider whose enabled key is off", async () => {
+      lumine.config.set("marker.specEnabled", false);
+      const initialize = jasmine.createSpy("initialize");
+      const getItems = jasmine.createSpy("getItems").and.returnValue([]);
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        enabled: "marker.specEnabled",
+        initialize,
+        getItems,
+      });
+
+      const handle = service.attach(await makeEditor());
+      handle.updateSync();
+
+      expect(handle.layerFor("a")).toBeUndefined();
+      expect(initialize).not.toHaveBeenCalled();
+      expect(getItems).not.toHaveBeenCalled();
+      // The census still lists it: disabled is not unregistered.
+      expect(service.providers().map((props) => props.name)).toEqual(["a"]);
+    });
+
+    it("treats a missing config value as enabled", async () => {
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        enabled: "marker.specEnabled",
+        getItems: () => [],
+      });
+
+      const handle = service.attach(await makeEditor());
+
+      expect(handle.layerFor("a")).toBeDefined();
+    });
+
+    it("destroys the layer in every editor when the key flips off", async () => {
+      let disposed = 0;
+      const getItems = jasmine.createSpy("getItems").and.returnValue([]);
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        enabled: "marker.specEnabled",
+        initialize: (layer) => {
+          layer.disposables.add({ dispose: () => disposed++ });
+        },
+        getItems,
+      });
+      const first = service.attach(await makeEditor());
+      const second = service.attach(await makeEditor());
+      const membership = jasmine.createSpy("membership");
+      service.onDidChangeLayers(membership);
+
+      lumine.config.set("marker.specEnabled", false);
+
+      expect(disposed).toBe(2);
+      expect(first.layerFor("a")).toBeUndefined();
+      expect(second.layerFor("a")).toBeUndefined();
+      expect(membership).toHaveBeenCalled();
+
+      // A disabled layer pays nothing: no compute reaches it ever again.
+      const computes = getItems.calls.count();
+      first.editor.foldBufferRange([
+        [1, 0],
+        [3, 5],
+      ]);
+      advanceClock(30);
+      expect(getItems.calls.count()).toBe(computes);
+    });
+
+    it("rebuilds with fresh items in every live editor when the key flips on", async () => {
+      lumine.config.set("marker.specEnabled", false);
+      const initialize = jasmine.createSpy("initialize");
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        enabled: "marker.specEnabled",
+        initialize,
+        getItems: () => [{ row: 1 }],
+      });
+      const first = service.attach(await makeEditor());
+      const second = service.attach(await makeEditor());
+
+      lumine.config.set("marker.specEnabled", true);
+      advanceClock(30);
+
+      expect(initialize).toHaveBeenCalledTimes(2);
+      expect(first.layerFor("a").items).toEqual([{ row: 1 }]);
+      expect(second.layerFor("a").items).toEqual([{ row: 1 }]);
+    });
+
+    it("does not leak an enabled subscription on a duplicate name", async () => {
+      spyOn(console, "warn");
+      mainModule.consumeMarkerLayer({ name: "dup", getItems: () => [{ row: 1 }] });
+      mainModule.consumeMarkerLayer({
+        name: "dup",
+        enabled: "marker.specEnabledDup",
+        getItems: () => [{ row: 5 }],
+      });
+      const handle = service.attach(await makeEditor());
+      const membership = jasmine.createSpy("membership");
+      service.onDidChangeLayers(membership);
+
+      lumine.config.set("marker.specEnabledDup", false);
+
+      expect(mainModule.registry.enabledSubs.size).toBe(0);
+      expect(handle.layerFor("dup")).toBeDefined();
+      expect(membership).not.toHaveBeenCalled();
+    });
+
+    it("drops the enabled subscription when the provider is disposed", async () => {
+      lumine.config.set("marker.specEnabled", false);
+      const disposable = mainModule.consumeMarkerLayer({
+        name: "a",
+        enabled: "marker.specEnabled",
+        getItems: () => [],
+      });
+      const handle = service.attach(await makeEditor());
+
+      disposable.dispose();
+      const membership = jasmine.createSpy("membership");
+      service.onDidChangeLayers(membership);
+      lumine.config.set("marker.specEnabled", true);
+
+      expect(handle.layerFor("a")).toBeUndefined();
+      expect(membership).not.toHaveBeenCalled();
+    });
+
+    it("ignores a config flip after the hub deactivates", async () => {
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        enabled: "marker.specEnabled",
+        getItems: () => [],
+      });
+      service.attach(await makeEditor());
+
+      await lumine.packages.deactivatePackage("marker");
+
+      expect(() => lumine.config.set("marker.specEnabled", false)).not.toThrow();
+    });
+  });
+
   describe("layers", () => {
     it("computes items once and reports them to every subscriber", async () => {
       const getItems = jasmine.createSpy("getItems").and.returnValue([{ row: 2 }, { row: 1 }]);

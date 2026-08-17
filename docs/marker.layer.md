@@ -37,15 +37,16 @@ Only `name` is required.
 
 Everything else is optional.
 
-| Field         | Type                              | Default | Description                                                                                                                                                                                         |
-| ------------- | --------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description` | string                            | —       | Shown beside the layer in the renderers' layer pickers.                                                                                                                                             |
-| `position`    | `"left"` \| `"right"` \| `"full"` | —       | Column for every item in the layer. Each renderer maps it to its own width.                                                                                                                         |
-| `timer`       | number                            | `20`    | Throttle interval in milliseconds for `update()`.                                                                                                                                                   |
-| `merge`       | boolean                           | `false` | Sort items and merge adjacent rows that share the same `cls` and `position`.                                                                                                                        |
-| `threshold`   | string                            | —       | A config key path read as a limit. Each renderer skips drawing the layer while it holds more items than the value there, scaled by that renderer's `thresholdScale`; the items themselves are kept. |
-| `initialize`  | `(layer) => void`                 | —       | Called once per editor, when the layer is attached to it.                                                                                                                                           |
-| `getItems`    | `(layer) => item[] \| null`       | —       | Called on every update to produce the markers.                                                                                                                                                      |
+| Field         | Type                              | Default | Description                                                                                                                                                                                                                                          |
+| ------------- | --------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description` | string                            | —       | Shown beside the layer in the renderers' layer pickers.                                                                                                                                                                                              |
+| `position`    | `"left"` \| `"right"` \| `"full"` | —       | Column for every item in the layer. Each renderer maps it to its own width.                                                                                                                                                                          |
+| `timer`       | number                            | `20`    | Throttle interval in milliseconds for `update()`.                                                                                                                                                                                                    |
+| `merge`       | boolean                           | `false` | Sort items and merge adjacent rows that share the same `cls` and `position`.                                                                                                                                                                         |
+| `threshold`   | string                            | —       | A config key path read as a limit. Each renderer skips drawing the layer while it holds more items than the value there, scaled by that renderer's `thresholdScale`; the items themselves are kept.                                                  |
+| `enabled`     | string                            | —       | A config key path read as an on/off switch. While the value there is `false` the layer does not exist: `initialize` never runs, no items are computed, and it is absent from every map and every layer picker. An absent key or value means enabled. |
+| `initialize`  | `(layer) => void`                 | —       | Called once per editor, when the layer is attached to it.                                                                                                                                                                                            |
+| `getItems`    | `(layer) => item[] \| null`       | —       | Called on every update to produce the markers.                                                                                                                                                                                                       |
 
 A marker item:
 
@@ -102,7 +103,7 @@ A falsy `getItems` return keeps the previous items: return `null` to skip an upd
 
 The hub copies every item before merging, so you may hand out cached objects without them being mutated. The array it ends up with is shared by every renderer — none of them writes to it, and neither should you.
 
-With `merge` you return raw, unsorted ranges and leave ordering and merging to the hub. Merging joins two items when they carry the same `cls` and `position` and the second starts no more than one row after the first ends. Setting `threshold` also subscribes the layer to that config key; a change redraws the maps without re-running `getItems`. Each renderer scales the limit by its own `thresholdScale` setting, since a count that saturates an 8px strip means something else on a map showing a couple of hundred rows at a time.
+With `merge` you return raw, unsorted ranges and leave ordering and merging to the hub. Merging joins two items when they carry the same `cls` and `position` and the second starts no more than one row after the first ends. Setting `threshold` also subscribes the layer to that config key; a change redraws the maps without re-running `getItems`. Each renderer scales the limit by its own `thresholdScale` setting, since a count that saturates an 8px strip means something else on a map showing a couple of hundred rows at a time. Setting `enabled` likewise subscribes the hub to that key, but at the registry rather than per editor: flipping it to `false` destroys the layer in every editor, and flipping it back rebuilds them — `initialize` runs again, so treat it as a cold start. A disabled layer costs nothing.
 
 **Styling.** A layer stylesheet sets **colour, opacity and z-index**; **geometry belongs to the renderer.** Write class-only rules so they resolve in either map, and keep the `.marker` qualifier so they cannot reach unrelated elements:
 
@@ -117,7 +118,7 @@ A class that resolves to no background colour draws nothing, and each renderer r
 
 Registering a second layer under a name that is already taken logs a warning and returns a no-op `Disposable`; the second layer never draws. Nothing else reports a mistake — a misspelled service name, or a `provideMarkerLayer` that is not exported from the main module, produces no error at all: the layer simply never arrives.
 
-If a layer registers but never appears, open the renderer's layer picker first: a layer the user has disabled looks exactly like one that never registered. The maps keep separate lists, so a layer can be on in one and off in the other.
+If a layer registers but never appears, check the providing package's `enabled` setting first — a layer disabled there does not exist anywhere and is missing from both pickers. If it is on, open the renderer's layer picker: a layer switched off there looks exactly like one that never registered, and the maps keep separate lists, so a layer can be on in one and off in the other.
 
 ## Teardown
 

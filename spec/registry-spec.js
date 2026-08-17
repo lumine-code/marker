@@ -5,6 +5,9 @@ describe("marker registry", () => {
     const pack = await lumine.packages.activatePackage("marker");
     mainModule = pack.mainModule;
     service = mainModule.provideMarkerRegistry();
+    // These specs exercise the hub's mechanics against their own inline
+    // providers; the built-in cursors layer would skew every census.
+    mainModule.cursors.destroy();
     return mainModule;
   }
 

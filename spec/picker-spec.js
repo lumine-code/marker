@@ -5,6 +5,9 @@ describe("layer picker", () => {
     const pack = await lumine.packages.activatePackage("marker");
     mainModule = pack.mainModule;
     service = mainModule.provideMarkerRegistry();
+    // These specs list their own inline providers; the built-in cursors layer
+    // would appear in every items() expectation.
+    mainModule.cursors.destroy();
   }
 
   beforeEach(async () => {

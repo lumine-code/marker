@@ -23,7 +23,8 @@
   "files": [
     "docs",
     "lib",
-    "spec"
+    "spec",
+    "styles"
   ],
   "scripts": {
     "test": "lumine --test spec",
@@ -52,5 +53,45 @@
     "eslint-plugin-n": "^18.3.0",
     "globals": "^17.11.0",
     "prettier": "^3.9.6"
+  },
+  "configSchema": {
+    "cursors": {
+      "title": "Cursors",
+      "description": "The built-in layer showing cursor positions and selections on the overview maps.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "Show the cursors layer on the overview maps.",
+          "type": "boolean",
+          "default": true
+        },
+        "threshold": {
+          "title": "Threshold",
+          "description": "Hide the layer on a map while the cursor count exceeds this value scaled by that map's threshold scale. Zero means no limit.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "showAll": {
+          "title": "Show all cursors",
+          "description": "Display all cursors or only the last one.",
+          "type": "boolean",
+          "default": true
+        },
+        "showSelections": {
+          "title": "Show selections",
+          "description": "Display selected ranges as full width markers.",
+          "type": "boolean",
+          "default": true
+        },
+        "inactiveShow": {
+          "title": "Show in inactive editors",
+          "description": "Display cursor markers in editors that are not currently focused.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
   }
 }

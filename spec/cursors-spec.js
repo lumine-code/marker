@@ -187,6 +187,12 @@ describe("cursors layer", () => {
     const second = service.attach(otherEditor);
     expect(lumine.config.observe).not.toHaveBeenCalled();
 
+    // A second cursor in each editor, so the flip below really changes the
+    // items -- a recompute that reproduces them is deliberately not reported.
+    editor.addCursorAtScreenPosition([10, 0]);
+    otherEditor.addCursorAtScreenPosition([1, 0]);
+    advanceClock(30);
+
     const changed = jasmine.createSpy("changed");
     service.onDidChangeItems(changed);
     lumine.config.set("marker.cursors.showAll", false);

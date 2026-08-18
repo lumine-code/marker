@@ -286,6 +286,46 @@ describe("marker registry", () => {
       expect(initialize).toHaveBeenCalledTimes(1);
     });
 
+    // Every emit costs each renderer a repaint, and the busiest layers -- a
+    // cursor wandering along one row -- reproduce the same items on every
+    // throttle tick.
+    it("does not report a recompute that reproduced the same items", async () => {
+      const getItems = jasmine.createSpy("getItems").and.callFake(() => [{ row: 1 }, { row: 4 }]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
+      const handle = service.attach(await makeEditor());
+      handle.updateSync();
+      const layer = handle.layerFor("a");
+      const itemsBefore = layer.items;
+      const changed = jasmine.createSpy("changed");
+      service.onDidChangeItems(changed);
+
+      handle.updateSync();
+
+      expect(getItems.calls.count()).toBe(2);
+      expect(changed).not.toHaveBeenCalled();
+      // The array keeps its identity, so a renderer may cache against it.
+      expect(layer.items).toBe(itemsBefore);
+    });
+
+    it("subscribes a threshold key once for the provider, not once per editor", async () => {
+      const disposable = mainModule.consumeMarkerLayer({
+        name: "a",
+        threshold: "marker.specThreshold",
+        getItems: () => [{ row: 0 }, { row: 3 }],
+      });
+      const first = service.attach(await makeEditor());
+      const second = service.attach(await makeEditor());
+
+      expect(mainModule.registry.limitSubs.size).toBe(1);
+
+      lumine.config.set("marker.specThreshold", 7);
+      expect(first.layerFor("a").limit).toBe(7);
+      expect(second.layerFor("a").limit).toBe(7);
+
+      disposable.dispose();
+      expect(mainModule.registry.limitSubs.size).toBe(0);
+    });
+
     it("keeps layer.limit current without re-running getItems", async () => {
       lumine.config.set("marker.specThreshold", 2);
       const getItems = jasmine

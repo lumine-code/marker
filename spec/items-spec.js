@@ -1,4 +1,4 @@
-const { classNameFor, mergeItems, normalizeItems } = require("../lib/items");
+const { classNameFor, itemsEqual, mergeItems, normalizeItems } = require("../lib/items");
 
 describe("items", () => {
   it("joins adjacent rows sharing a class and position", () => {
@@ -47,5 +47,26 @@ describe("items", () => {
     expect(classNameFor({ name: "git-diff", position: "right" }, { position: "full" })).toBe(
       "marker marker-git-diff full",
     );
+  });
+
+  describe("itemsEqual", () => {
+    it("matches on the four contract fields regardless of object identity", () => {
+      expect(itemsEqual([], [])).toBe(true);
+      expect(
+        itemsEqual(
+          [{ row: 1, end: 2, cls: "a", position: "left" }],
+          [{ row: 1, end: 2, cls: "a", position: "left" }],
+        ),
+      ).toBe(true);
+    });
+
+    it("differs on any field, on length, and on order", () => {
+      expect(itemsEqual([{ row: 1 }], [{ row: 2 }])).toBe(false);
+      expect(itemsEqual([{ row: 1 }], [{ row: 1, end: 3 }])).toBe(false);
+      expect(itemsEqual([{ row: 1 }], [{ row: 1, cls: "x" }])).toBe(false);
+      expect(itemsEqual([{ row: 1 }], [{ row: 1, position: "full" }])).toBe(false);
+      expect(itemsEqual([{ row: 1 }], [{ row: 1 }, { row: 2 }])).toBe(false);
+      expect(itemsEqual([{ row: 1 }, { row: 2 }], [{ row: 2 }, { row: 1 }])).toBe(false);
+    });
   });
 });

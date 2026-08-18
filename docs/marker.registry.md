@@ -123,7 +123,7 @@ module.exports = {
 
 **One computation, shared.** Whatever the number of consumers, `getItems` runs once per layer per update; every handle on the same editor reads the same items array. A late `attach` finds items already computed.
 
-**Events are synchronous and editor-addressed.** `onDidChangeItems` fires from the hub's throttle with the layer that moved; look up your view by `layer.editor` and coalesce repaints yourself (both bundled maps use a rAF). `onDidChangeLayers` means the picker list and every map changed shape.
+**Events are synchronous and editor-addressed.** `onDidChangeItems` fires from the hub's throttle with the layer that moved; look up your view by `layer.editor` and coalesce repaints yourself (both bundled maps use a rAF). A recompute that reproduced the same items does not fire, and `layer.items` keeps its identity until the markers really move — so the array itself is a change signal you may cache against. `onDidChangeLayers` means the picker list and every map changed shape.
 
 **Filtering is yours; `limit` and `enabled` are the hub's.** The hub never reads a renderer's config. Observe your own `disabledLayers` and `thresholdScale` keys, cache their values, and skip layers at draw time: `disabled.includes(layer.name)`, then `layer.limit && layer.items.length > layer.limit * thresholdScale`. The hub keeps each `layer.limit` current and emits a change when it moves — without re-running `getItems`. A provider's `enabled` key is enforced upstream: while it is off the layer is simply absent from every handle's `layers()`, and the flip reaches you as `onDidChangeLayers` — you filter nothing.
 

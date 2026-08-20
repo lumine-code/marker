@@ -275,6 +275,30 @@ describe("marker registry", () => {
       expect(getItems.calls.count()).toBeGreaterThan(before);
     });
 
+    // A re-wrap moves every screen row below it without touching the buffer,
+    // exactly as a fold does. Providers convert to screen rows inside getItems,
+    // so items computed before it point at rows the document no longer has and
+    // the markers sit at the wrong height until something else re-polls.
+    it("recomputes the layers on a re-wrap, since screen rows moved", async () => {
+      const getItems = jasmine.createSpy("getItems").and.returnValue([]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
+      const editor = await makeEditor();
+      editor.setText(
+        Array.from({ length: 10 }, (_, i) => `line ${i} ${"word ".repeat(20)}`).join("\n"),
+      );
+      editor.setSoftWrapped(true);
+      const handle = service.attach(editor);
+      handle.updateSync();
+      const before = getItems.calls.count();
+
+      // What a narrower pane does to the editor: the wrap column moves, so the
+      // display layer resets and every wrapped line spans a different span.
+      editor.displayLayer.reset({ softWrapColumn: 20 });
+      advanceClock(30);
+
+      expect(getItems.calls.count()).toBeGreaterThan(before);
+    });
+
     it("runs initialize once per editor, however many renderers attach", async () => {
       const initialize = jasmine.createSpy("initialize");
       mainModule.consumeMarkerLayer({ name: "a", initialize, getItems: () => [] });

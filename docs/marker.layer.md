@@ -110,7 +110,7 @@ With `merge` you return raw, unsorted ranges and leave ordering and merging to t
 ```css
 .marker.marker-mylayer {
   z-index: 14;
-  background-color: var(--text-color-info);
+  background-color: var(--accent-color);
 }
 ```
 

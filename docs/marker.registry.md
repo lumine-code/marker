@@ -4,7 +4,7 @@ The marker hub hands a renderer every editor's computed layers and the toolkit t
 
 |             |                                                            |
 | ----------- | ---------------------------------------------------------- |
-| Version     | `1.0.0`                                                    |
+| Version     | `2.0.0`                                                    |
 | Provided by | `provideMarkerRegistry()` returning the registry object    |
 | Consumed by | `consumeMarkerRegistry(registry)` returning a `Disposable` |
 | Owner       | [`marker`](https://github.com/lumine-code/marker)          |
@@ -19,7 +19,7 @@ In your `package.json`:
 {
   "consumedServices": {
     "marker.registry": {
-      "versions": { "^1.0.0": "consumeMarkerRegistry" }
+      "versions": { "^2.0.0": "consumeMarkerRegistry" }
     }
   }
 }
@@ -103,7 +103,10 @@ module.exports = {
       lumine.workspace.observeTextEditors((editor) => {
         const view = {
           handle: registry.attach(editor),
-          canvas: new registry.MarkerCanvas({ className: "mymap" }),
+          canvas: new registry.MarkerCanvas({
+            document: editor.getElement().ownerDocument,
+            className: "mymap",
+          }),
         };
         this.views.set(editor, view);
         editor.getElement().appendChild(view.canvas.element);

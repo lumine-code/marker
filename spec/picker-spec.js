@@ -34,6 +34,28 @@ describe("layer picker", () => {
     picker.destroy();
   });
 
+  it("decorates rows in the select list's Document", () => {
+    const picker = makePicker("marker.specA.disabledLayers");
+    const frame = document.createElement("iframe");
+    jasmine.attachToDOM(frame);
+    const item = { name: "layer1", description: "Realm local" };
+    const descriptor = picker.selectList.props.elementForItem(item, {
+      highlight: (text) => frame.contentDocument.createTextNode(text),
+    });
+    const li = frame.contentDocument.createElement("li");
+    const primary = frame.contentDocument.createElement("div");
+    primary.className = "primary-line";
+    li.appendChild(primary);
+
+    descriptor.didRender(li);
+
+    expect(li.querySelector(".tag").ownerDocument).toBe(frame.contentDocument);
+    expect(li.textContent).toContain("layer1");
+    expect(li.textContent).toContain("Realm local");
+    picker.destroy();
+    frame.remove();
+  });
+
   // A layer switched off globally cannot draw on any map, so offering the
   // per-renderer toggle for it would be a lie.
   it("leaves a globally disabled provider out of the list", () => {

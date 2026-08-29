@@ -42,7 +42,7 @@
   "providedServices": {
     "marker.registry": {
       "versions": {
-        "1.0.0": "provideMarkerRegistry"
+        "2.0.0": "provideMarkerRegistry"
       }
     }
   },

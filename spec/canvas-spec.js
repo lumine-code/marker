@@ -9,6 +9,7 @@ describe("canvas", () => {
     const fills = [];
     return {
       fills,
+      ownerDocument: document,
       width: 0,
       height: 0,
       style: {},
@@ -36,7 +37,7 @@ describe("canvas", () => {
 
   function makeStyles(css) {
     styleSheet(css);
-    const styles = new MarkerStyles({ label: "spec" });
+    const styles = new MarkerStyles({ document, label: "spec" });
     container.appendChild(styles.element);
     return styles;
   }
@@ -157,5 +158,25 @@ describe("canvas", () => {
     drawRegions(canvas, styles, [{ y: 0, height: 1, className: "marker marker-a" }], 10, 100);
 
     expect([...styles.probes.keys()]).toEqual(["marker marker-a"]);
+  });
+
+  it("uses the canvas owner window after the renderer moves to another document", () => {
+    const frame = document.createElement("iframe");
+    jasmine.attachToDOM(frame);
+    Object.defineProperty(frame.contentWindow, "devicePixelRatio", {
+      configurable: true,
+      value: 2,
+    });
+    const canvas = document.createElement("canvas");
+    frame.contentDocument.body.appendChild(canvas);
+    const styles = new MarkerStyles({ document: frame.contentDocument, label: "spec" });
+    frame.contentDocument.body.appendChild(styles.element);
+
+    drawRegions(canvas, styles, [], 12, 7);
+
+    expect(canvas.ownerDocument).toBe(frame.contentDocument);
+    expect(canvas.width).toBe(24);
+    expect(canvas.height).toBe(14);
+    frame.remove();
   });
 });

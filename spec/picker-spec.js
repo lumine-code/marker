@@ -104,4 +104,18 @@ describe("layer picker", () => {
     expect(lumine.config.get("marker.specA.disabledLayers")).toEqual([]);
     picker.destroy();
   });
+
+  it("toggles the selected layer through a staying primary action", async () => {
+    mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });
+    const picker = makePicker("marker.specA.disabledLayers");
+    picker.show();
+    await picker.selectList.selectItemById("layer1");
+
+    await picker.selectList.confirmSelection();
+
+    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual(["layer1"]);
+    expect(picker.selectList.getSelectedItemId()).toBe("layer1");
+    expect(picker.selectList.isVisible()).toBe(true);
+    picker.destroy();
+  });
 });

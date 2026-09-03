@@ -115,7 +115,7 @@ describe("layer picker", () => {
 
     expect(lumine.config.get("marker.specA.disabledLayers")).toEqual(["layer1"]);
     expect(picker.selectList.getSelectedItemId()).toBe("layer1");
-    expect(picker.selectList.isVisible()).toBe(true);
+    expect(picker.selectListHost.isVisible()).toBe(true);
     picker.destroy();
   });
 });

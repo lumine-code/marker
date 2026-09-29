@@ -299,6 +299,141 @@ describe("marker registry", () => {
       expect(getItems.calls.count()).toBeGreaterThan(before);
     });
 
+    it("keeps projected items while typing within an unwrapped screen row", async () => {
+      const getItems = jasmine.createSpy("getItems").and.returnValue([{ row: 8 }]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
+      const editor = await makeEditor();
+      const handle = service.attach(editor);
+      handle.updateSync();
+      advanceClock(30);
+      const before = getItems.calls.count();
+
+      editor.getBuffer().insert([4, 0], "x");
+      advanceClock(30);
+
+      expect(getItems.calls.count()).toBe(before);
+      expect(handle.layerFor("a").items).toEqual([{ row: 8 }]);
+    });
+
+    it("does not reproject for an unwrapped row when other rows are wrapped", async () => {
+      const getItems = jasmine
+        .createSpy("getItems")
+        .and.callFake((layer) => [
+          { row: layer.editor.screenPositionForBufferPosition([9, 0]).row },
+        ]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
+      const editor = await makeEditor();
+      editor.getBuffer().setTextInRange(
+        [
+          [1, 0],
+          [1, 6],
+        ],
+        "word ".repeat(12),
+      );
+      editor.displayLayer.reset({ softWrapColumn: 20 });
+      const handle = service.attach(editor);
+      handle.updateSync();
+      advanceClock(30);
+      expect(editor.getScreenLineCount()).toBeGreaterThan(editor.getLineCount());
+      const before = getItems.calls.count();
+
+      editor.getBuffer().insert([4, 0], "x");
+      advanceClock(30);
+
+      expect(getItems.calls.count()).toBe(before);
+    });
+
+    it("reprojects when a row acquires or loses its last wrap", async () => {
+      const getItems = jasmine
+        .createSpy("getItems")
+        .and.callFake((layer) => [
+          { row: layer.editor.screenPositionForBufferPosition([9, 0]).row },
+        ]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
+      const editor = await makeEditor();
+      editor.getBuffer().setTextInRange(
+        [
+          [1, 0],
+          [1, 6],
+        ],
+        "x".repeat(19),
+      );
+      editor.displayLayer.reset({ softWrapColumn: 20 });
+      const handle = service.attach(editor);
+      handle.updateSync();
+      advanceClock(30);
+      const before = getItems.calls.count();
+      expect(handle.layerFor("a").items).toEqual([{ row: 9 }]);
+
+      editor.getBuffer().insert([1, 0], "xxxx");
+      advanceClock(30);
+
+      expect(getItems.calls.count()).toBeGreaterThan(before);
+      expect(handle.layerFor("a").items).toEqual([{ row: 10 }]);
+      const wrapped = getItems.calls.count();
+
+      editor.getBuffer().delete([
+        [1, 0],
+        [1, 4],
+      ]);
+      advanceClock(30);
+
+      expect(getItems.calls.count()).toBeGreaterThan(wrapped);
+      expect(handle.layerFor("a").items).toEqual([{ row: 9 }]);
+    });
+
+    it("reprojects wrapped endpoints even when the screen row count is unchanged", async () => {
+      const editor = await makeEditor();
+      editor.getBuffer().setTextInRange(
+        [
+          [1, 0],
+          [1, 6],
+        ],
+        "x".repeat(30),
+      );
+      editor.displayLayer.reset({ softWrapColumn: 20 });
+      const marker = editor.getBuffer().markPosition([1, 19]);
+      const getItems = jasmine
+        .createSpy("getItems")
+        .and.callFake((layer) => [
+          { row: layer.editor.screenPositionForBufferPosition(marker.getHeadPosition()).row },
+        ]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
+      const handle = service.attach(editor);
+      handle.updateSync();
+      advanceClock(30);
+      const rowCount = editor.getScreenLineCount();
+      const before = handle.layerFor("a").items[0].row;
+
+      editor.getBuffer().insert([1, 0], "xx");
+      advanceClock(30);
+
+      expect(editor.getScreenLineCount()).toBe(rowCount);
+      expect(handle.layerFor("a").items[0].row).toBeGreaterThan(before);
+      expect(handle.layerFor("a").items[0].row).toBe(
+        editor.screenPositionForBufferPosition(marker.getHeadPosition()).row,
+      );
+    });
+
+    it("reprojects a newline edit with no folds", async () => {
+      const editor = await makeEditor();
+      const marker = editor.getBuffer().markPosition([8, 0]);
+      const getItems = jasmine
+        .createSpy("getItems")
+        .and.callFake((layer) => [
+          { row: layer.editor.screenPositionForBufferPosition(marker.getHeadPosition()).row },
+        ]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
+      const handle = service.attach(editor);
+      handle.updateSync();
+      advanceClock(30);
+
+      editor.getBuffer().insert([4, 0], "\n");
+      advanceClock(30);
+
+      expect(handle.layerFor("a").items).toEqual([{ row: 9 }]);
+    });
+
     it("runs initialize once per editor, however many renderers attach", async () => {
       const initialize = jasmine.createSpy("initialize");
       mainModule.consumeMarkerLayer({ name: "a", initialize, getItems: () => [] });

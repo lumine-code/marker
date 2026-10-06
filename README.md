@@ -23,7 +23,7 @@ The built-in cursors layer can be restyled from the `styles.css` file, e.g. chan
 
 ```css
 .marker.marker-cursors {
-  background-color: var(--accent-color);
+  background-color: var(--accent-indicator-color);
 }
 
 .marker.marker-cursors.selection {

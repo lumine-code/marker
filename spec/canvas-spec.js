@@ -1,4 +1,4 @@
-const { MarkerStyles, drawRegions } = require("../lib/canvas");
+const { MarkerStyles, drawRegions, resolveLength } = require("../lib/canvas");
 
 describe("canvas", () => {
   let container, sheets;
@@ -52,6 +52,27 @@ describe("canvas", () => {
       sheet.remove();
     }
     container.remove();
+  });
+
+  it("resolves numeric marker heights as pixels, including zero and fractional lengths", () => {
+    expect(resolveLength(4, 200, 9)).toBe(4);
+    expect(resolveLength(0.5, 200, 9)).toBe(0.5);
+    expect(resolveLength(0, 200, 9)).toBe(0);
+  });
+
+  it("uses the fallback for nonfinite numeric marker heights", () => {
+    for (const value of [NaN, Infinity, -Infinity]) {
+      expect(resolveLength(value, 200, 9)).toBe(9);
+    }
+  });
+
+  it("retains CSS pixel, percentage and automatic marker-height resolution", () => {
+    expect(resolveLength("4px", 200, 9)).toBe(4);
+    expect(resolveLength("12.5%", 200, 9)).toBe(25);
+    expect(resolveLength("0px", 200, 9)).toBe(0);
+    expect(resolveLength("auto", 200, 9)).toBe(9);
+    expect(resolveLength(undefined, 200, 9)).toBe(9);
+    expect(resolveLength("invalid", 200, 9)).toBe(9);
   });
 
   it("fills a marker with the colour its stylesheet gives it", () => {

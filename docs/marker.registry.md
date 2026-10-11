@@ -25,7 +25,7 @@ In your `package.json`:
 }
 ```
 
-Export `consumeMarkerRegistry(registry)` from your main module and **return a `Disposable`**: it is disposed when the hub deactivates, and must drop every handle, picker and canvas you built from the payload.
+Export `consumeMarkerRegistry(registry)` from your main module and **return a `Disposable`**: it is disposed when the hub deactivates, and must drop every handle and canvas you built from the payload. The layer picker belongs to `marker` and is independent of renderer activation.
 
 ## Contract
 
@@ -33,9 +33,9 @@ Export `consumeMarkerRegistry(registry)` from your main module and **return a `D
 interface Registry {
   // data
   attach(editor: TextEditor): AttachHandle; // refcounted
-  providers(): Descriptor[]; // registration order, including providers currently switched off by their own `enabled` key
+  providers(): Descriptor[]; // registration order, including disabled providers
   onDidChangeItems(cb: (layer: Layer) => void): Disposable; // items or limit moved; layer.editor addresses the redraw
-  onDidChangeLayers(cb: () => void): Disposable; // a provider registered, unregistered, or its `enabled` key flipped
+  onDidChangeLayers(cb: () => void): Disposable; // a provider registered, unregistered, or its shared enabled state changed
 
   // toolkit — constructors and pure functions, never instances
   classNameFor(props: Descriptor, item: Item): string; // "marker marker-<name> [position] [cls]"
@@ -44,12 +44,6 @@ interface Registry {
   drawRegions(canvas, styles, regions, width, height): void;
   resolveLength(value: string, basis: number, fallback?: number): number;
   resizeCanvas(canvas, width, height): CanvasRenderingContext2D;
-  createPicker(options: {
-    className: string;
-    emptyMessage: string;
-    disabledKey: string; // your config key; the picker reads and writes it
-    extras?: { name; description?; isEnabled(); toggle() }[];
-  }): LayerPicker;
 }
 
 interface AttachHandle {
@@ -61,8 +55,7 @@ interface AttachHandle {
   dispose(): void; // refcount release; idempotent
 }
 
-// Only enabled providers become layers; a provider switched off by its own
-// `enabled` key has none, anywhere.
+// Only enabled providers become layers; a disabled provider has none anywhere.
 interface Layer {
   readonly name: string;
   readonly props: Descriptor; // what the provider registered
@@ -75,7 +68,6 @@ interface Layer {
 
 ```js
 const ROW = 3; // px per screen row in this toy map
-const disabled = () => lumine.config.get("mymap.disabledLayers") ?? [];
 
 module.exports = {
   consumeMarkerRegistry(registry) {
@@ -86,7 +78,6 @@ module.exports = {
       if (!view) return;
       const regions = [];
       for (const layer of view.handle.layers()) {
-        if (disabled().includes(layer.name)) continue;
         if (layer.limit && layer.items.length > layer.limit) continue;
         for (const item of layer.items) {
           regions.push({
@@ -125,13 +116,15 @@ module.exports = {
 
 **Events are synchronous and editor-addressed.** `onDidChangeItems` fires from the hub's throttle with the layer that moved; look up your view by `layer.editor` and coalesce repaints yourself (both bundled maps use a rAF). A recompute that reproduced the same items does not fire, and `layer.items` keeps its identity until the markers really move — so the array itself is a change signal you may cache against. `onDidChangeLayers` means the picker list and every map changed shape.
 
-**Filtering is yours; `limit` and `enabled` are the hub's.** The hub never reads a renderer's config. Observe your own `disabledLayers` and `thresholdScale` keys, cache their values, and skip layers at draw time: `disabled.includes(layer.name)`, then `layer.limit && layer.items.length > layer.limit * thresholdScale`. The hub keeps each `layer.limit` current and emits a change when it moves — without re-running `getItems`. A provider's `enabled` key is enforced upstream: while it is off the layer is simply absent from every handle's `layers()`, and the flip reaches you as `onDidChangeLayers` — you filter nothing.
+**Layer selection belongs to the hub.** `marker:toggle-focus` opens the single layer picker. Switching a layer off destroys its instances, subscriptions, throttles and caches in every editor. Switching it back on initializes fresh instances and recomputes only that layer. Disabled providers remain in the picker. A provider's `enabled` setting is its single switch; providers without that setting use `marker.disabledLayers`. Renderers keep no separate enabled lists and see changes through `onDidChangeLayers`.
+
+**Density belongs to the renderer.** Observe your own `thresholdScale` setting, cache it, and skip a layer while `layer.limit && layer.items.length > layer.limit * thresholdScale`. The hub keeps each `layer.limit` current and emits a change when it moves without re-running `getItems`.
 
 **Instantiate the toolkit per renderer.** `MarkerStyles` probes resolve percentage widths and offsets against the element you mount them in, and warn once per class that resolves to no colour, naming your map. Sharing an instance between two maps would give one of them the other's geometry.
 
 ## Teardown
 
-Hold each handle for the **editor's lifetime, not your visibility**: dispose on `editor.onDidDestroy` or in your own teardown, never on hide — the last dispose destroys the layers, their caches and their in-flight work, and a map that merely toggled off would come back to cold layers. Everything is idempotent: a handle disposed twice, or after the editor or the hub died, is a no-op. The `Disposable` you return from `consumeMarkerRegistry` is disposed when the hub deactivates — drop every handle, picker and canvas in it; payload methods on a destroyed hub are inert, not errors.
+Hold each handle for the **editor's lifetime, not your visibility**: dispose on `editor.onDidDestroy` or in your own teardown, never on hide — the last dispose destroys the layers, their caches and their in-flight work, and a map that merely toggled off would come back to cold layers. Everything is idempotent: a handle disposed twice, or after the editor or the hub died, is a no-op. The `Disposable` you return from `consumeMarkerRegistry` is disposed when the hub deactivates — drop every handle and canvas in it; payload methods on a destroyed hub are inert, not errors.
 
 ## Versioning
 

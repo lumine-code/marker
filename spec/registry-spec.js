@@ -80,6 +80,177 @@ describe("marker registry", () => {
   });
 
   describe("enabled", () => {
+    it("builds a reentrant replacement in every editor before old cleanup finishes", async () => {
+      let registration;
+      const replacement = jasmine.createSpy("replacement");
+      const original = mainModule.consumeMarkerLayer({
+        name: "a",
+        initialize: (layer) =>
+          layer.disposables.add({
+            dispose: () => {
+              registration ??= mainModule.consumeMarkerLayer({
+                name: "a",
+                initialize: replacement,
+                getItems: () => [{ row: 3 }],
+              });
+            },
+          }),
+      });
+      const first = service.attach(await makeEditor());
+      const second = service.attach(await makeEditor());
+      // Disposing a provider, rather than disabling it, frees the name for a
+      // new descriptor registered by the first editor's cleanup callback.
+      original.dispose();
+      first.updateSync();
+      second.updateSync();
+      expect(replacement).toHaveBeenCalledTimes(2);
+      expect(first.layerFor("a").items).toEqual([{ row: 3 }]);
+      expect(second.layerFor("a").items).toEqual([{ row: 3 }]);
+    });
+
+    it("keeps fresh layers when cleanup immediately enables their provider again", async () => {
+      let restore = true;
+      const initialize = jasmine.createSpy("initialize").and.callFake((layer) => {
+        layer.disposables.add({
+          dispose: () => {
+            if (!restore) return;
+            restore = false;
+            mainModule.registry.setEnabled("a", true);
+          },
+        });
+      });
+      mainModule.consumeMarkerLayer({ name: "a", initialize, getItems: () => [{ row: 1 }] });
+      const first = service.attach(await makeEditor());
+      const second = service.attach(await makeEditor());
+      const oldFirst = first.layerFor("a");
+      const oldSecond = second.layerFor("a");
+      mainModule.registry.setEnabled("a", false);
+      expect(oldFirst.destroyed).toBe(true);
+      expect(oldSecond.destroyed).toBe(true);
+      expect(first.layerFor("a")).not.toBe(oldFirst);
+      expect(second.layerFor("a")).not.toBe(oldSecond);
+      expect(first.layerFor("a").destroyed).toBe(false);
+      expect(second.layerFor("a").destroyed).toBe(false);
+      expect(initialize).toHaveBeenCalledTimes(4);
+    });
+
+    it("ignores copied config callbacks after their provider is replaced", async () => {
+      const callbacks = new Map();
+      const subscribe = lumine.config.onDidChange.bind(lumine.config);
+      spyOn(lumine.config, "onDidChange").and.callFake((key, ...args) => {
+        if (["marker.oldEnabled", "marker.oldLimit"].includes(key)) callbacks.set(key, args.at(-1));
+        return subscribe(key, ...args);
+      });
+      const old = mainModule.consumeMarkerLayer({
+        name: "a",
+        enabled: "marker.oldEnabled",
+        threshold: "marker.oldLimit",
+        getItems: () => [{ row: 1 }],
+      });
+      const handle = service.attach(await makeEditor());
+      old.dispose();
+      mainModule.consumeMarkerLayer({ name: "a", getItems: () => [{ row: 3 }] });
+      handle.updateSync();
+      const replacement = handle.layerFor("a");
+      callbacks.get("marker.oldEnabled")({ newValue: false });
+      callbacks.get("marker.oldLimit")({ newValue: 9 });
+      expect(handle.layerFor("a")).toBe(replacement);
+      expect(replacement.items).toEqual([{ row: 3 }]);
+      expect(replacement.limit).toBe(0);
+      expect(mainModule.registry.isEnabled("a")).toBe(true);
+    });
+
+    it("releases an editor set if provider initialization fails", async () => {
+      const editor = await makeEditor();
+      const dispose = jasmine.createSpy("dispose");
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        initialize: (layer) => {
+          layer.disposables.add({ dispose });
+          throw new Error("Initialization failed");
+        },
+      });
+      expect(() => service.attach(editor)).toThrowError("Initialization failed");
+      expect(mainModule.registry.sets.has(editor)).toBe(false);
+      expect(dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it("withdraws a failed late provider and its configuration subscriptions", async () => {
+      const handle = service.attach(await makeEditor());
+      expect(() =>
+        mainModule.consumeMarkerLayer({
+          name: "a",
+          enabled: "marker.specEnabled",
+          threshold: "marker.specThreshold",
+          initialize: () => {
+            throw new Error("Initialization failed");
+          },
+        }),
+      ).toThrowError("Initialization failed");
+      expect(handle.layerFor("a")).toBeUndefined();
+      expect(mainModule.registry.providers.has("a")).toBe(false);
+      expect(mainModule.registry.enabledSubs.size).toBe(0);
+      expect(mainModule.registry.limitSubs.size).toBe(0);
+    });
+
+    it("does not recompute unrelated layers when a provider is enabled", async () => {
+      const unaffected = jasmine.createSpy("unaffected").and.returnValue([{ row: 1 }]);
+      const affected = jasmine.createSpy("affected").and.returnValue([{ row: 2 }]);
+      mainModule.consumeMarkerLayer({ name: "a", getItems: unaffected });
+      mainModule.consumeMarkerLayer({ name: "b", getItems: affected });
+      const handle = service.attach(await makeEditor());
+      handle.updateSync();
+      mainModule.registry.setEnabled("b", false);
+      mainModule.registry.setEnabled("b", true);
+      advanceClock(30);
+      expect(unaffected).toHaveBeenCalledTimes(1);
+      expect(affected).toHaveBeenCalledTimes(2);
+    });
+
+    it("cancels pending work and ignores callbacks from a disabled generation", async () => {
+      const getItems = jasmine.createSpy("getItems").and.returnValue([{ row: 1 }]);
+      const dispose = jasmine.createSpy("dispose");
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        getItems,
+        initialize: (layer) => layer.disposables.add({ dispose }),
+      });
+      const handle = service.attach(await makeEditor());
+      handle.updateSync();
+      const stale = handle.layerFor("a");
+      stale.update();
+      mainModule.registry.setEnabled("a", false);
+      stale.update();
+      stale.updateSync();
+      advanceClock(30);
+      expect(getItems).toHaveBeenCalledTimes(1);
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(stale.items).toEqual([]);
+      mainModule.registry.setEnabled("a", true);
+      advanceClock(30);
+      expect(getItems).toHaveBeenCalledTimes(2);
+      expect(handle.layerFor("a")).not.toBe(stale);
+      expect(handle.layerFor("a").items).toEqual([{ row: 1 }]);
+    });
+
+    it("can disable itself during initialization without leaving a live layer", async () => {
+      const getItems = jasmine.createSpy("getItems").and.returnValue([{ row: 1 }]);
+      const dispose = jasmine.createSpy("dispose");
+      mainModule.consumeMarkerLayer({
+        name: "a",
+        getItems,
+        initialize: (layer) => {
+          layer.disposables.add({ dispose });
+          mainModule.registry.setEnabled("a", false);
+        },
+      });
+      const handle = service.attach(await makeEditor());
+      handle.updateSync();
+      expect(handle.layerFor("a")).toBeUndefined();
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(getItems).not.toHaveBeenCalled();
+    });
+
     afterEach(() => {
       lumine.config.unset("marker.specEnabled");
       lumine.config.unset("marker.specEnabledDup");

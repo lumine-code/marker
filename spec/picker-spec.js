@@ -1,121 +1,82 @@
-describe("layer picker", () => {
-  let mainModule, service;
-
-  async function activate() {
-    const pack = await lumine.packages.activatePackage("marker");
-    mainModule = pack.mainModule;
-    service = mainModule.provideMarkerRegistry();
-    // These specs list their own inline providers; the built-in cursors layer
-    // would appear in every items() expectation.
-    mainModule.cursors.destroy();
-  }
+describe("marker layer picker", () => {
+  let mainModule, picker, workspaceElement;
 
   beforeEach(async () => {
-    await activate();
-    lumine.config.set("marker.specA.disabledLayers", []);
-    lumine.config.set("marker.specB.disabledLayers", []);
+    workspaceElement = lumine.views.getView(lumine.workspace);
+    jasmine.attachToDOM(workspaceElement);
+    mainModule = (await lumine.packages.activatePackage("marker")).mainModule;
+    mainModule.cursors.destroy();
+    lumine.commands.dispatch(workspaceElement, "marker:toggle-focus");
+    picker = mainModule.picker;
   });
 
-  function makePicker(disabledKey, extras) {
-    return service.createPicker({
-      className: "marker-spec-view",
-      emptyMessage: "No layers",
-      disabledKey,
-      extras,
-    });
-  }
-
-  it("lists the extras before the registered providers", () => {
-    mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });
-    const extra = { name: "extra1", isEnabled: () => true, toggle() {} };
-    const picker = makePicker("marker.specA.disabledLayers", [extra]);
-
-    expect(picker.items().map((item) => item.name)).toEqual(["extra1", "layer1"]);
-    picker.destroy();
+  it("owns one picker without an overview renderer", () => {
+    expect(picker.selectListHost.isVisible()).toBe(true);
+    lumine.commands.dispatch(workspaceElement, "marker:toggle-focus");
+    expect(picker.selectListHost.isVisible()).toBe(false);
+    lumine.commands.dispatch(workspaceElement, "marker:toggle-focus");
+    expect(mainModule.picker).toBe(picker);
+    expect(picker.selectListHost.isVisible()).toBe(true);
+    expect(mainModule.provideMarkerRegistry().createPicker).toBeUndefined();
   });
 
-  // A layer switched off globally cannot draw on any map, so offering the
-  // per-renderer toggle for it would be a lie.
-  it("leaves a globally disabled provider out of the list", () => {
-    mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });
+  it("keeps disabled providers listed and toggles their own enable setting", () => {
+    lumine.config.set("marker.specPickerEnabled", false);
     mainModule.consumeMarkerLayer({
-      name: "layer2",
+      name: "layer1",
       enabled: "marker.specPickerEnabled",
       getItems: () => [],
     });
-    const picker = makePicker("marker.specA.disabledLayers");
-
-    lumine.config.set("marker.specPickerEnabled", false);
     expect(picker.items().map((item) => item.name)).toEqual(["layer1"]);
-
-    lumine.config.set("marker.specPickerEnabled", true);
-    expect(picker.items().map((item) => item.name)).toEqual(["layer1", "layer2"]);
-
-    lumine.config.unset("marker.specPickerEnabled");
-    picker.destroy();
-  });
-
-  // Two maps over one registry: each picker writes its own key and nothing else.
-  it("keeps two pickers on separate disabled keys independent", () => {
-    mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });
-    const pickerA = makePicker("marker.specA.disabledLayers");
-    const pickerB = makePicker("marker.specB.disabledLayers");
-
-    pickerA.toggle({ name: "layer1" });
-
-    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual(["layer1"]);
-    expect(lumine.config.get("marker.specB.disabledLayers")).toEqual([]);
-    expect(pickerA.isEnabled({ name: "layer1" })).toBe(false);
-    expect(pickerB.isEnabled({ name: "layer1" })).toBe(true);
-
-    pickerA.toggle({ name: "layer1" });
-    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual([]);
-    expect(pickerA.isEnabled({ name: "layer1" })).toBe(true);
-
-    pickerA.destroy();
-    pickerB.destroy();
-  });
-
-  it("reads the disabled list live rather than caching it", () => {
-    const picker = makePicker("marker.specA.disabledLayers");
-
-    lumine.config.set("marker.specA.disabledLayers", ["layer1"]);
-
     expect(picker.isEnabled({ name: "layer1" })).toBe(false);
-    picker.destroy();
+    picker.toggle({ name: "layer1" });
+    expect(lumine.config.get("marker.specPickerEnabled")).toBe(true);
+    expect(picker.isEnabled({ name: "layer1" })).toBe(true);
+    picker.toggle({ name: "layer1" });
+    expect(lumine.config.get("marker.specPickerEnabled")).toBe(false);
+    expect(picker.items().map((item) => item.name)).toEqual(["layer1"]);
   });
 
-  // An extra is a renderer-owned toggle: the picker must never route it through
-  // the disabled list.
-  it("lets an extra bring its own state and toggle", () => {
-    let enabled = true;
-    const extra = {
-      name: "extra1",
-      isEnabled: () => enabled,
-      toggle: () => {
-        enabled = !enabled;
-      },
-    };
-    const picker = makePicker("marker.specA.disabledLayers", [extra]);
-
-    expect(picker.isEnabled(extra)).toBe(true);
-    picker.toggle(extra);
-    expect(enabled).toBe(false);
-    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual([]);
-    picker.destroy();
+  it("updates the open list when a provider arrives or retires", () => {
+    const registration = mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });
+    expect(picker.selectList.getItems().map((item) => item.name)).toEqual(["layer1"]);
+    registration.dispose();
+    expect(picker.selectList.getItems()).toEqual([]);
   });
 
-  it("toggles the selected layer through a staying primary action", async () => {
+  it("toggles one shared layer for every attached map", async () => {
+    mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [{ row: 1 }] });
+    const editor = await lumine.workspace.open();
+    const service = mainModule.provideMarkerRegistry();
+    const firstMap = service.attach(editor);
+    const secondMap = service.attach(editor);
+    const oldLayer = firstMap.layerFor("layer1");
+    picker.toggle({ name: "layer1" });
+    expect(lumine.config.get("marker.disabledLayers")).toEqual(["layer1"]);
+    expect(firstMap.layerFor("layer1")).toBeUndefined();
+    expect(secondMap.layerFor("layer1")).toBeUndefined();
+    picker.toggle({ name: "layer1" });
+    expect(firstMap.layerFor("layer1")).not.toBe(oldLayer);
+    expect(firstMap.layerFor("layer1")).toBe(secondMap.layerFor("layer1"));
+    firstMap.dispose();
+    secondMap.dispose();
+  });
+
+  it("keeps the selection and window open after its primary action", async () => {
     mainModule.consumeMarkerLayer({ name: "layer1", getItems: () => [] });
-    const picker = makePicker("marker.specA.disabledLayers");
-    picker.show();
     await picker.selectList.selectItemById("layer1");
-
     await picker.selectList.confirmSelection();
-
-    expect(lumine.config.get("marker.specA.disabledLayers")).toEqual(["layer1"]);
+    expect(lumine.config.get("marker.disabledLayers")).toEqual(["layer1"]);
     expect(picker.selectList.getSelectedItemId()).toBe("layer1");
     expect(picker.selectListHost.isVisible()).toBe(true);
-    picker.destroy();
+  });
+
+  it("destroys the picker when marker deactivates", async () => {
+    spyOn(picker, "destroy").and.callThrough();
+    await lumine.packages.deactivatePackage("marker");
+    expect(picker.destroy).toHaveBeenCalledTimes(1);
+    expect(workspaceElement.querySelector(".marker-view")).toBeNull();
+    expect(() => picker.toggleFocus()).not.toThrow();
+    expect(picker.toggle({ name: "cursors" })).toBe(false);
   });
 });

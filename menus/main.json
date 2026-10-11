@@ -1,0 +1,13 @@
+{
+  "menu": [
+    {
+      "label": "Packages",
+      "submenu": [
+        {
+          "label": "Marker",
+          "submenu": [{ "label": "Toggle Focus", "command": "marker:toggle-focus" }]
+        }
+      ]
+    }
+  ]
+}

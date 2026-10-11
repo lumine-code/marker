@@ -23,6 +23,8 @@
   "files": [
     "docs",
     "lib",
+    "keymaps",
+    "menus",
     "spec",
     "styles"
   ],
@@ -44,6 +46,11 @@
       "versions": {
         "1.0.0": "provideMarkerRegistry"
       }
+    },
+    "background-tips.provider": {
+      "versions": {
+        "1.0.0": "provideBackgroundTips"
+      }
     }
   },
   "devDependencies": {
@@ -55,6 +62,15 @@
     "prettier": "^3.9.9"
   },
   "configSchema": {
+    "disabledLayers": {
+      "title": "Disabled Layers",
+      "description": "Disable layers that do not declare their own enable setting on all overview maps.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
     "cursors": {
       "title": "Cursors",
       "description": "The built-in layer showing cursor positions and selections on the overview maps.",

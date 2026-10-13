@@ -1,0 +1,17 @@
+{
+  "title": "marker",
+  "description": "Manage visible marker layers for editor annotations.",
+  "recordedOn": "2026-10-13",
+  "sourceRevision": "c35dd7ae41c836de5465e571e64034a55d4d2f03",
+  "mode": "normal",
+  "fontSettings": "default",
+  "themeSourceRevision": "6564a9e21899b5541e9c8f8006f9be6d6d72e6ad",
+  "images": [
+    {
+      "file": "demo.png",
+      "label": "Manage visible marker layers for editor annotations.",
+      "width": 1200,
+      "height": 760
+    }
+  ]
+}

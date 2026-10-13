@@ -13,6 +13,8 @@ Packages such as `git-diff` or `linter` register a layer descriptor here, the hu
 - **Layer picker**: one shared list enables or disables layers on every overview map, including layers currently switched off.
 - **Cursors layer**: a built-in layer showing every cursor position and selection band, with its own `marker.cursors` settings.
 
+![Manage visible marker layers for editor annotations.](.github/demo.png)
+
 ## Installation
 
 To install `marker` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/marker`.

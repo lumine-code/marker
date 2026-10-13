@@ -9,6 +9,7 @@ describe("canvas", () => {
     const fills = [];
     return {
       fills,
+      ownerDocument: document,
       width: 0,
       height: 0,
       style: {},

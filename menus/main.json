@@ -4,11 +4,13 @@
       "label": "View",
       "submenu": [
         {
-          "label": "Open View",
+          "label": "Editor",
           "submenu": [
             {
-              "label": "Marker Layers",
-              "command": "marker:toggle-focus"
+              "label": "Configure Marker Layers…",
+              "command": "marker:toggle-focus",
+              "group": "structure",
+              "order": 50
             }
           ]
         }

@@ -69,6 +69,13 @@ describe("marker layer picker", () => {
     expect(lumine.config.get("marker.disabledLayers")).toEqual(["layer1"]);
     expect(picker.selectList.getSelectedItemId()).toBe("layer1");
     expect(picker.selectListHost.isVisible()).toBe(true);
+    expect(picker.selectList.supportsKeepOpen()).toBe(false);
+    expect(picker.selectList.getAvailableActions().map(({ command }) => command)).not.toContain(
+      "select-list:toggle-keep-open",
+    );
+    await picker.selectList.confirmSelection();
+    expect(lumine.config.get("marker.disabledLayers")).toEqual([]);
+    expect(picker.selectListHost.isVisible()).toBe(true);
   });
 
   it("destroys the picker when marker deactivates", async () => {

@@ -1,4 +1,4 @@
-const { MarkerStyles, drawRegions, resolveLength } = require("../lib/canvas");
+const { MarkerStyles, drawRegions, resizeCanvas, resolveLength } = require("../lib/canvas");
 
 describe("canvas", () => {
   let container, sheets;
@@ -7,22 +7,24 @@ describe("canvas", () => {
   // what order -- a recording canvas keeps the assertions exact.
   function createCanvas() {
     const fills = [];
+    const context = {
+      globalAlpha: 1,
+      fillStyle: "",
+      setTransform() {},
+      clearRect() {},
+      fillRect(x, y, width, height) {
+        fills.push({ x, y, width, height, color: this.fillStyle, alpha: this.globalAlpha });
+      },
+    };
     return {
       fills,
+      context,
       ownerDocument: document,
       width: 0,
       height: 0,
       style: {},
       getContext() {
-        return {
-          globalAlpha: 1,
-          fillStyle: "",
-          setTransform() {},
-          clearRect() {},
-          fillRect(x, y, width, height) {
-            fills.push({ x, y, width, height, color: this.fillStyle, alpha: this.globalAlpha });
-          },
-        };
+        return context;
       },
     };
   }
@@ -107,6 +109,134 @@ describe("canvas", () => {
     );
 
     expect(canvas.fills.map((fill) => fill.color)).toEqual(["rgb(0, 0, 255)", "rgb(0, 255, 0)"]);
+  });
+
+  it("resolves each class once while keeping equal-z regions in their original order", () => {
+    const byClass = {
+      low: { x: 0, width: 10, minHeight: 1, color: "blue", opacity: 1, zIndex: -2 },
+      a: { x: 0, width: 10, minHeight: 1, color: "red", opacity: 0.5, zIndex: 3 },
+      b: { x: 0, width: 10, minHeight: 1, color: "green", opacity: 0.5, zIndex: 3 },
+      hidden: {
+        x: 0,
+        width: 10,
+        minHeight: 1,
+        color: "rgba(0, 0, 0, 0)",
+        opacity: 1,
+        zIndex: 0,
+      },
+    };
+    const styles = {
+      styleFor: jasmine.createSpy("resolve style").and.callFake((className) => byClass[className]),
+      prune: jasmine.createSpy("prune"),
+    };
+    const regions = Object.freeze(
+      Array.from({ length: 1000 }, (_, index) =>
+        Object.freeze({
+          y: index / 10,
+          height: 1.5,
+          className: ["a", "low", "b", "hidden"][index % 4],
+        }),
+      ),
+    );
+    const canvas = createCanvas();
+
+    drawRegions(canvas, styles, regions, 10, 100);
+
+    expect(styles.styleFor).toHaveBeenCalledTimes(4);
+    expect(canvas.fills.map((fill) => fill.y)).toEqual([
+      ...regions.filter((region) => region.className === "low").map((region) => region.y),
+      ...regions
+        .filter((region) => region.className === "a" || region.className === "b")
+        .map((region) => region.y),
+    ]);
+    expect(styles.prune).toHaveBeenCalledWith(new Set(["a", "low", "b", "hidden"]));
+    expect(canvas.context.globalAlpha).toBe(1);
+  });
+
+  it("keeps every translucent overlap while avoiding repeated context state writes", () => {
+    const style = { x: 2, width: 4, minHeight: 1, color: "red", opacity: 0.5, zIndex: 0 };
+    const styles = { styleFor: () => style, prune() {} };
+    const canvas = createCanvas();
+    const alphaWrites = [];
+    const colorWrites = [];
+    let alpha = 1;
+    let color = "";
+    Object.defineProperties(canvas.context, {
+      globalAlpha: {
+        get: () => alpha,
+        set: (value) => {
+          alphaWrites.push(value);
+          alpha = value;
+        },
+      },
+      fillStyle: {
+        get: () => color,
+        set: (value) => {
+          colorWrites.push(value);
+          color = value;
+        },
+      },
+    });
+    const region = Object.freeze({ y: 3.25, height: 2.5, className: "a" });
+
+    drawRegions(canvas, styles, [region, region, region], 10, 100);
+
+    expect(canvas.fills).toEqual(
+      Array(3).fill({ x: 2, y: 3.25, width: 4, height: 2.5, color: "red", alpha: 0.5 }),
+    );
+    expect(alphaWrites).toEqual([0.5, 1]);
+    expect(colorWrites).toEqual(["red"]);
+  });
+
+  it("matches per-region source-over pixels for interleaved styles and repeated overlaps", () => {
+    const byClass = {
+      low: { x: 0, width: 7, minHeight: 1, height: 2, color: "blue", opacity: 0.25, zIndex: -2 },
+      a: {
+        x: 1,
+        width: 5,
+        minHeight: 1,
+        height: 2,
+        color: "rgba(255, 0, 0, 0.5)",
+        opacity: 0.5,
+        zIndex: 3,
+      },
+      b: { x: 2, width: 3, minHeight: 1, height: 2, color: "green", opacity: 0.5, zIndex: 3 },
+    };
+    const regions = [
+      { y: 2.25, height: 3.5, className: "a" },
+      { y: 1, height: 0, className: "low" },
+      { y: 3, height: 4, className: "b" },
+      { y: 2.25, height: 3.5, className: "a" },
+      { y: 5.5, height: -1, className: "low" },
+      { y: 2, className: "b" },
+    ];
+    const actual = document.createElement("canvas");
+    drawRegions(actual, { styleFor: (name) => byClass[name], prune() {} }, regions, 8, 10);
+
+    const expected = document.createElement("canvas");
+    const context = resizeCanvas(expected, 8, 10);
+    const order = regions
+      .map((region, index) => ({ region, index }))
+      .sort(
+        (a, b) =>
+          byClass[a.region.className].zIndex - byClass[b.region.className].zIndex ||
+          a.index - b.index,
+      );
+    for (const { region } of order) {
+      const style = byClass[region.className];
+      context.globalAlpha = style.opacity;
+      context.fillStyle = style.color;
+      context.fillRect(
+        style.x,
+        region.y,
+        style.width,
+        Math.max(style.minHeight, region.height || style.height || 1),
+      );
+    }
+
+    expect(
+      Array.from(actual.getContext("2d").getImageData(0, 0, actual.width, actual.height).data),
+    ).toEqual(Array.from(context.getImageData(0, 0, expected.width, expected.height).data));
   });
 
   it("draws nothing for a colourless marker and reports it once", () => {

@@ -41,7 +41,6 @@ Everything else is optional.
 | ------------- | --------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `description` | string                            | —       | Shown beside the layer in the hub's layer picker.                                                                                                                                                                                                                                                                                     |
 | `position`    | `"left"` \| `"right"` \| `"full"` | —       | Column for every item in the layer. Each renderer maps it to its own width.                                                                                                                                                                                                                                                           |
-| `timer`       | number                            | `0`     | Zero batches `update()` into the editor's next frame. A positive value opts into a trailing throttle in milliseconds.                                                                                                                                                                                                                 |
 | `merge`       | boolean                           | `false` | Sort items and merge adjacent rows that share the same `cls` and `position`.                                                                                                                                                                                                                                                          |
 | `threshold`   | string                            | —       | A config key path read as a limit. Each renderer skips drawing the layer while it holds more items than the value there, scaled by that renderer's `thresholdScale`; the items themselves are kept.                                                                                                                                   |
 | `enabled`     | string                            | —       | A config key path read as an on/off switch. While the value there is `false` the layer does not exist: `initialize` never runs, no items are computed, and it is absent from every map. It remains in the hub picker so it can be enabled again. Without this key, the hub uses marker.disabledLayers. An absent value means enabled. |
@@ -68,7 +67,7 @@ The `layer` instance passed to `initialize` and `getItems`:
 | `cache`        | `Map`                 | Free store for bridging external data into `getItems`. Write it from a service callback, read it in `getItems`. |
 | `items`        | array                 | The current items. Read-only for providers.                                                                     |
 | `disposables`  | `CompositeDisposable` | Disposed when the layer is destroyed.                                                                           |
-| `update()`     | function              | Schedules `getItems` in the next editor frame, or after an explicit positive `timer`.                           |
+| `update()`     | function              | Schedules `getItems` in the next editor frame.                                                                  |
 | `updateSync()` | function              | Computes immediately and cancels pending work, for flicker-free handovers such as swapping diff editors.        |
 
 ## Minimal example
@@ -101,7 +100,7 @@ module.exports = {
 
 A falsy `getItems` return keeps the previous items: return `null` to skip an update cycle, and an empty array to clear the layer. A recompute that reproduces the same markers is not reported to the renderers at all — returning a fresh array of unchanged items costs a comparison, never a repaint.
 
-Call `update()` when the provider's own data is ready: after a search finishes, diagnostics arrive, a parser settles or a diff is published. The hub adds no quiet period by default. It combines repeated layer requests and editor geometry changes into one computation per affected layer in the next editor frame, using the newest data. Keep expensive work, asynchronous requests and any debounce in the provider; `getItems` projects the available results into screen rows. A positive `timer` is only for a provider that needs an additional throttle. Repeated calls do not postpone its deadline.
+Call `update()` when the provider's own data is ready: after a search finishes, diagnostics arrive, a parser settles or a diff is published. The hub combines repeated layer requests and editor geometry changes into one computation per affected layer in the next editor frame, using the newest data. Keep expensive work, asynchronous requests and their scheduling in the provider; `getItems` projects the available results into screen rows.
 
 The hub copies every item before merging, so you may hand out cached objects without them being mutated. The array it ends up with is shared by every renderer — none of them writes to it, and neither should you.
 
@@ -124,7 +123,7 @@ If a layer registers but never appears, open the hub's picker with `marker:toggl
 
 ## Teardown
 
-Add every subscription to `layer.disposables`. The hub disposes it when the layer is destroyed — when the editor closes, when your package deactivates, or when the hub itself is destroyed — and also cancels the pending throttle and clears `cache` and `items`.
+Add every subscription to `layer.disposables`. The hub disposes it when the layer is destroyed — when the editor closes, when your package deactivates, or when the hub itself is destroyed — and also cancels the pending frame update and clears `cache` and `items`.
 
 To reach your layers from outside `getItems`, a plain `Map` keyed by editor is all it takes:
 

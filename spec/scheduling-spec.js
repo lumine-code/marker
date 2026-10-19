@@ -65,10 +65,10 @@ describe("marker update scheduling", () => {
   describe("provider updates", () => {
     beforeEach(() => mainModule.cursors.destroy());
 
-    function makeLayer(props = {}) {
+    function makeLayer() {
       let row = 0;
       const getItems = jasmine.createSpy("getItems").and.callFake(() => [{ row }]);
-      mainModule.consumeMarkerLayer({ name: "a", getItems, ...props });
+      mainModule.consumeMarkerLayer({ name: "a", getItems });
       const handle = attach();
       handle.updateSync();
       drainReads();
@@ -92,17 +92,6 @@ describe("marker update scheduling", () => {
       drainReads();
       expect(getItems).toHaveBeenCalledTimes(1);
       expect(layer.items).toEqual([{ row: 12 }]);
-    });
-
-    it("treats an explicit zero timer as a frame update", () => {
-      const { layer, getItems, move } = makeLayer({ timer: 0 });
-
-      move(4);
-      layer.update();
-      drainReads();
-
-      expect(getItems).toHaveBeenCalledTimes(1);
-      expect(layer.items).toEqual([{ row: 4 }]);
     });
 
     it("keeps progressing on consecutive frames during continuous updates", () => {
@@ -171,56 +160,26 @@ describe("marker update scheduling", () => {
       expect(getItems).toHaveBeenCalledTimes(1);
     });
 
-    it("honors a positive timer without postponing its deadline on each event", () => {
-      const { layer, getItems, move } = makeLayer({ timer: 40 });
-
-      move(3);
-      layer.update();
-      advanceClock(30);
-      move(10);
-      layer.update();
-      expect(getItems).not.toHaveBeenCalled();
-      advanceClock(10);
-
-      expect(getItems).toHaveBeenCalledTimes(1);
-      expect(layer.items).toEqual([{ row: 10 }]);
-      expect(lumine.views.readDocument).not.toHaveBeenCalled();
-    });
-
-    it("cancels an explicit timer after a synchronous update", () => {
-      const { handle, layer, getItems, move } = makeLayer({ timer: 40 });
-
-      move(5);
-      layer.update();
-      handle.updateSync();
-      advanceClock(50);
-      drainReads();
-
-      expect(getItems).toHaveBeenCalledTimes(1);
-      expect(layer.items).toEqual([{ row: 5 }]);
-    });
-
     it("leaves queued callbacks and stale handles inert after releasing the editor", () => {
       const { handle, layer, getItems } = makeLayer();
-      const timedItems = jasmine.createSpy("timedItems").and.returnValue([{ row: 8 }]);
-      mainModule.consumeMarkerLayer({ name: "timed", timer: 40, getItems: timedItems });
-      const timed = handle.layerFor("timed");
-      timed.update();
+      const otherItems = jasmine.createSpy("otherItems").and.returnValue([{ row: 8 }]);
+      mainModule.consumeMarkerLayer({ name: "b", getItems: otherItems });
+      const other = handle.layerFor("b");
+      other.update();
       layer.update();
       handle.update();
 
       handle.dispose();
       layer.update();
       layer.updateSync();
-      timed.update();
+      other.update();
       handle.update();
       handle.updateSync();
       // Even a callback copied before cancellation must not resurrect its set.
       drainReads({ includeCancelled: true });
-      advanceClock(50);
 
       expect(getItems).not.toHaveBeenCalled();
-      expect(timedItems).not.toHaveBeenCalled();
+      expect(otherItems).not.toHaveBeenCalled();
       expect(layer.items).toEqual([]);
       expect([...handle.layers()]).toEqual([]);
     });

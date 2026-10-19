@@ -7,7 +7,7 @@ Packages such as `git-diff` or `linter` register a layer descriptor here, the hu
 ## Features
 
 - **One computation**: each layer's items are produced once per editor and shared by every map that draws them.
-- **Layer lifecycle**: the hub owns per-editor layers, their throttles, caches and subscriptions, and tears them down when the last map lets go.
+- **Layer lifecycle**: the hub owns per-editor layers, their pending frame updates, caches and subscriptions, and tears them down when the last map lets go.
 - **Draw toolkit**: maps draw through hub-supplied canvas machinery, so one stylesheet rule in a layer package paints identically everywhere.
 - **Style probes**: marker colors, opacity and stacking are resolved from ordinary CSS, and a layer that resolves to no color is reported once instead of failing silently.
 - **Layer picker**: one shared list enables or disables layers on every overview map, including layers currently switched off.

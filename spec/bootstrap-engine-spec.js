@@ -31,7 +31,7 @@ describe("marker engine module identity", () => {
     expect(handle.set instanceof legacy.LayerSet).toBe(true);
     expect(handle.layerFor("cursors") instanceof legacy.Layer).toBe(true);
     expect(legacy.LayerSet).toBe(engine.LayerSet);
-    expect(Object.keys(legacy)).toEqual(["DEFAULT_TIMER", "Layer", "LayerSet"]);
+    expect(Object.keys(legacy)).toEqual(["Layer", "LayerSet"]);
     expect(Object.keys(engine)).toEqual(["AttachHandle", "Registry"]);
     handle.dispose();
     editor.destroy();

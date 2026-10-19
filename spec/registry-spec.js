@@ -618,7 +618,7 @@ describe("marker registry", () => {
 
     // Every emit costs each renderer a repaint, and the busiest layers -- a
     // cursor wandering along one row -- reproduce the same items on every
-    // throttle tick.
+    // document frame.
     it("does not report a recompute that reproduced the same items", async () => {
       const getItems = jasmine.createSpy("getItems").and.callFake(() => [{ row: 1 }, { row: 4 }]);
       mainModule.consumeMarkerLayer({ name: "a", getItems });

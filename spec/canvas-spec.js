@@ -274,6 +274,72 @@ describe("canvas", () => {
     expect(reads).toBe(2);
   });
 
+  it("re-resolves percentage styles for every class after width or height changes", () => {
+    const styles = makeStyles(`
+      .marker.marker-a { position: absolute; width: 50%; min-height: 25%; background: red; }
+      .marker.marker-b { position: absolute; width: 25%; min-height: 50%; background: blue; }
+    `);
+    const size = (width, height) => {
+      styles.element.style.cssText = `position: relative; width: ${width}px; height: ${height}px;`;
+    };
+    const read = spyOn(styles, "read").and.callThrough();
+    size(20, 40);
+    expect(styles.styleFor("marker marker-a", 20, 40).width).toBe(10);
+    expect(styles.styleFor("marker marker-b", 20, 40).width).toBe(5);
+    expect(read).toHaveBeenCalledTimes(2);
+
+    size(40, 40);
+    const wideA = styles.styleFor("marker marker-a", 40, 40);
+    const wideB = styles.styleFor("marker marker-b", 40, 40);
+    expect(wideA.width).toBe(20);
+    expect(wideB.width).toBe(10);
+    expect(read).toHaveBeenCalledTimes(4);
+
+    size(40, 80);
+    const tallA = styles.styleFor("marker marker-a", 40, 80);
+    const tallB = styles.styleFor("marker marker-b", 40, 80);
+    expect(tallA.minHeight).toBe(20);
+    expect(tallB.minHeight).toBe(40);
+    expect(read).toHaveBeenCalledTimes(6);
+
+    expect(styles.styleFor("marker marker-a", 40, 80)).toBe(tallA);
+    expect(styles.styleFor("marker marker-b", 40, 80)).toBe(tallB);
+    expect(read).toHaveBeenCalledTimes(6);
+  });
+
+  it("repaints resized marker geometry and prunes classes without losing the new style cache", () => {
+    const styles = makeStyles(`
+      .marker.marker-a, .marker.marker-b { position: absolute; width: 50%; min-height: 25%; background: red; }
+    `);
+    const canvas = createCanvas();
+    const read = spyOn(styles, "read").and.callThrough();
+    styles.element.style.cssText = "position: relative; width: 20px; height: 40px;";
+    drawRegions(
+      canvas,
+      styles,
+      [
+        { y: 0, className: "marker marker-a" },
+        { y: 12, className: "marker marker-b" },
+      ],
+      20,
+      40,
+    );
+    expect(canvas.fills.map(({ width, height }) => [width, height])).toEqual([
+      [10, 10],
+      [10, 10],
+    ]);
+
+    styles.element.style.cssText = "position: relative; width: 40px; height: 80px;";
+    const regions = [{ y: 0, className: "marker marker-a" }];
+    drawRegions(canvas, styles, regions, 40, 80);
+    expect(canvas.fills[2].width).toBe(20);
+    expect(canvas.fills[2].height).toBe(20);
+    expect([...styles.probes.keys()]).toEqual(["marker marker-a"]);
+    expect([...styles.cache.keys()]).toEqual(["marker marker-a"]);
+    drawRegions(canvas, styles, regions, 40, 80);
+    expect(read).toHaveBeenCalledTimes(3);
+  });
+
   // The digest exists so a restyle that misses the markers costs nothing.
   it("moves the signature only when a marker's own styling moves", () => {
     const styles = makeStyles(".marker.marker-a { background-color: rgb(255, 0, 0); }");

@@ -156,15 +156,15 @@ describe("cursors layer", () => {
   it("updates the layer when cursors are added, moved, or removed", () => {
     editor.setCursorScreenPosition([0, 0]);
     const cursor = editor.addCursorAtScreenPosition([15, 0]);
-    advanceClock(30);
+    lumine.views.performDocumentUpdate();
     expect(layer.items).toEqual([{ row: 0 }, { row: 15 }]);
 
     cursor.setScreenPosition([16, 0]);
-    advanceClock(30);
+    lumine.views.performDocumentUpdate();
     expect(layer.items).toEqual([{ row: 0 }, { row: 16 }]);
 
     cursor.destroy();
-    advanceClock(30);
+    lumine.views.performDocumentUpdate();
     expect(layer.items).toEqual([{ row: 0 }]);
   });
 
@@ -173,7 +173,7 @@ describe("cursors layer", () => {
       [2, 0],
       [5, 0],
     ]);
-    advanceClock(30);
+    lumine.views.performDocumentUpdate();
     expect(layer.items[0]).toEqual({ row: 2, end: 4, position: "full", cls: "selection" });
   });
 
@@ -191,12 +191,12 @@ describe("cursors layer", () => {
     // items -- a recompute that reproduces them is deliberately not reported.
     editor.addCursorAtScreenPosition([10, 0]);
     otherEditor.addCursorAtScreenPosition([1, 0]);
-    advanceClock(30);
+    lumine.views.performDocumentUpdate();
 
     const changed = jasmine.createSpy("changed");
     service.onDidChangeItems(changed);
     lumine.config.set("marker.cursors.showAll", false);
-    advanceClock(30);
+    lumine.views.performDocumentUpdate();
 
     const editors = changed.calls.all().map((call) => call.args[0].editor);
     expect(editors).toContain(editor);
@@ -209,7 +209,7 @@ describe("cursors layer", () => {
     expect(handle.layerFor("cursors")).toBeUndefined();
 
     lumine.config.set("marker.cursors.enabled", true);
-    advanceClock(30);
+    lumine.views.performDocumentUpdate();
     expect(handle.layerFor("cursors")).toBeDefined();
     expect(handle.layerFor("cursors").items.length).toBeGreaterThan(0);
   });

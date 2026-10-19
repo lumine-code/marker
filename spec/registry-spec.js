@@ -202,7 +202,7 @@ describe("marker registry", () => {
       handle.updateSync();
       mainModule.registry.setEnabled("b", false);
       mainModule.registry.setEnabled("b", true);
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       expect(unaffected).toHaveBeenCalledTimes(1);
       expect(affected).toHaveBeenCalledTimes(2);
     });
@@ -222,12 +222,12 @@ describe("marker registry", () => {
       mainModule.registry.setEnabled("a", false);
       stale.update();
       stale.updateSync();
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       expect(getItems).toHaveBeenCalledTimes(1);
       expect(dispose).toHaveBeenCalledTimes(1);
       expect(stale.items).toEqual([]);
       mainModule.registry.setEnabled("a", true);
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       expect(getItems).toHaveBeenCalledTimes(2);
       expect(handle.layerFor("a")).not.toBe(stale);
       expect(handle.layerFor("a").items).toEqual([{ row: 1 }]);
@@ -318,7 +318,7 @@ describe("marker registry", () => {
         [1, 0],
         [3, 5],
       ]);
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       expect(getItems.calls.count()).toBe(computes);
     });
 
@@ -335,7 +335,7 @@ describe("marker registry", () => {
       const second = service.attach(await makeEditor());
 
       lumine.config.set("marker.specEnabled", true);
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(initialize).toHaveBeenCalledTimes(2);
       expect(first.layerFor("a").items).toEqual([{ row: 1 }]);
@@ -404,7 +404,7 @@ describe("marker registry", () => {
       service.onDidChangeItems(changed);
 
       first.update();
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(getItems).toHaveBeenCalledTimes(1);
       expect(first.layerFor("a").items).toEqual([{ row: 1, end: 2 }]);
@@ -441,7 +441,7 @@ describe("marker registry", () => {
         [1, 0],
         [3, 5],
       ]);
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(getItems.calls.count()).toBeGreaterThan(before);
     });
@@ -465,7 +465,7 @@ describe("marker registry", () => {
       // What a narrower pane does to the editor: the wrap column moves, so the
       // display layer resets and every wrapped line spans a different span.
       editor.displayLayer.reset({ softWrapColumn: 20 });
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(getItems.calls.count()).toBeGreaterThan(before);
     });
@@ -476,11 +476,11 @@ describe("marker registry", () => {
       const editor = await makeEditor();
       const handle = service.attach(editor);
       handle.updateSync();
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       const before = getItems.calls.count();
 
       editor.getBuffer().insert([4, 0], "x");
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(getItems.calls.count()).toBe(before);
       expect(handle.layerFor("a").items).toEqual([{ row: 8 }]);
@@ -504,12 +504,12 @@ describe("marker registry", () => {
       editor.displayLayer.reset({ softWrapColumn: 20 });
       const handle = service.attach(editor);
       handle.updateSync();
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       expect(editor.getScreenLineCount()).toBeGreaterThan(editor.getLineCount());
       const before = getItems.calls.count();
 
       editor.getBuffer().insert([4, 0], "x");
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(getItems.calls.count()).toBe(before);
     });
@@ -532,12 +532,12 @@ describe("marker registry", () => {
       editor.displayLayer.reset({ softWrapColumn: 20 });
       const handle = service.attach(editor);
       handle.updateSync();
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       const before = getItems.calls.count();
       expect(handle.layerFor("a").items).toEqual([{ row: 9 }]);
 
       editor.getBuffer().insert([1, 0], "xxxx");
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(getItems.calls.count()).toBeGreaterThan(before);
       expect(handle.layerFor("a").items).toEqual([{ row: 10 }]);
@@ -547,7 +547,7 @@ describe("marker registry", () => {
         [1, 0],
         [1, 4],
       ]);
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(getItems.calls.count()).toBeGreaterThan(wrapped);
       expect(handle.layerFor("a").items).toEqual([{ row: 9 }]);
@@ -572,12 +572,12 @@ describe("marker registry", () => {
       mainModule.consumeMarkerLayer({ name: "a", getItems });
       const handle = service.attach(editor);
       handle.updateSync();
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       const rowCount = editor.getScreenLineCount();
       const before = handle.layerFor("a").items[0].row;
 
       editor.getBuffer().insert([1, 0], "xx");
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(editor.getScreenLineCount()).toBe(rowCount);
       expect(handle.layerFor("a").items[0].row).toBeGreaterThan(before);
@@ -597,10 +597,10 @@ describe("marker registry", () => {
       mainModule.consumeMarkerLayer({ name: "a", getItems });
       const handle = service.attach(editor);
       handle.updateSync();
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       editor.getBuffer().insert([4, 0], "\n");
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
 
       expect(handle.layerFor("a").items).toEqual([{ row: 9 }]);
     });
@@ -739,7 +739,7 @@ describe("marker registry", () => {
         [1, 0],
         [3, 5],
       ]);
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       handle.updateSync();
 
       expect(getItems.calls.count()).toBe(before);
@@ -790,7 +790,7 @@ describe("marker registry", () => {
 
       await lumine.packages.deactivatePackage("marker");
 
-      advanceClock(30);
+      lumine.views.performDocumentUpdate();
       expect(getItems).not.toHaveBeenCalled();
       expect([...handle.layers()]).toEqual([]);
       expect(() => handle.dispose()).not.toThrow();

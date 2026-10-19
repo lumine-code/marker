@@ -50,7 +50,7 @@ interface AttachHandle {
   readonly editor: TextEditor | undefined;
   layers(): Iterable<Layer>; // registration order
   layerFor(name: string): Layer | undefined;
-  update(): void; // throttled recompute of every layer
+  update(): void; // next-frame recompute of every layer
   updateSync(): void;
   dispose(): void; // refcount release; idempotent
 }
@@ -114,7 +114,7 @@ module.exports = {
 
 **One computation, shared.** Whatever the number of consumers, `getItems` runs once per layer per update; every handle on the same editor reads the same items array. A late `attach` finds items already computed.
 
-**Events are synchronous and editor-addressed.** `onDidChangeItems` fires from the hub's throttle with the layer that moved; look up your view by `layer.editor` and coalesce repaints yourself (both bundled maps use a rAF). A recompute that reproduced the same items does not fire, and `layer.items` keeps its identity until the markers really move — so the array itself is a change signal you may cache against. `onDidChangeLayers` means the picker list and every map changed shape.
+**Events are synchronous and editor-addressed.** `onDidChangeItems` fires with the layer that moved; look up your view by `layer.editor` and coalesce repaints yourself. Default layer updates run in the editor's document read phase. A renderer can join that frame with `lumine.views.readDocument()` and queue its paint through `lumine.views.updateDocument()` from the read callback: this paints after the editor's measurements without requesting a second animation frame. Explicit positive provider timers and `updateSync()` can also emit outside that phase. A recompute that reproduced the same items does not fire, and `layer.items` keeps its identity until the markers really move — so the array itself is a change signal you may cache against. `onDidChangeLayers` means the picker list and every map changed shape.
 
 **Layer selection belongs to the hub.** `marker:toggle-focus` opens the single layer picker. Switching a layer off destroys its instances, subscriptions, throttles and caches in every editor. Switching it back on initializes fresh instances and recomputes only that layer. Disabled providers remain in the picker. A provider's `enabled` setting is its single switch; providers without that setting use `marker.disabledLayers`. Renderers keep no separate enabled lists and see changes through `onDidChangeLayers`.
 

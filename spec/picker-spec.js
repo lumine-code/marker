@@ -1,4 +1,9 @@
 describe("marker layer picker", () => {
+  // Processing fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let mainModule, picker, workspaceElement;
 
   beforeEach(async () => {

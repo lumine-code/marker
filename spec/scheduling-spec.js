@@ -1,4 +1,9 @@
 describe("marker update scheduling", () => {
+  // Processing fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let mainModule, service, editor, handles, reads;
 
   function drainReads({ includeCancelled = false } = {}) {

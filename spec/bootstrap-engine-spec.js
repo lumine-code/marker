@@ -2,6 +2,11 @@ const path = require("node:path");
 const { createRequire } = require("node:module");
 
 describe("marker engine module identity", () => {
+  // Processing fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let pack;
   const currentRequire = () => createRequire(path.join(pack.path, "package.json"));
 

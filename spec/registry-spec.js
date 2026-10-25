@@ -1,4 +1,9 @@
 describe("marker registry", () => {
+  // Processing fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let workspaceElement, mainModule, service;
 
   async function activate() {

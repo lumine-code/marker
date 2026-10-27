@@ -99,6 +99,18 @@ describe("marker update scheduling", () => {
       expect(layer.items).toEqual([{ row: 12 }]);
     });
 
+    it("ignores repaint-only syntax changes but still polls changed row geometry", () => {
+      const { getItems } = makeLayer();
+      const { Range } = require("lumine");
+      const change = { oldRange: new Range([0, 0], [40, 0]), newRange: new Range([0, 0], [40, 0]) };
+      editor.displayLayer.emitter.emit("did-change", [{ ...change, origin: "highlight" }]);
+      drainReads();
+      expect(getItems).not.toHaveBeenCalled();
+      editor.displayLayer.emitter.emit("did-change", [change]);
+      drainReads();
+      expect(getItems).toHaveBeenCalledTimes(1);
+    });
+
     it("keeps progressing on consecutive frames during continuous updates", () => {
       const { layer, getItems, move } = makeLayer();
 

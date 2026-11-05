@@ -39,13 +39,13 @@ describe("items", () => {
   });
 
   it("composes the layer, position and item classes", () => {
-    expect(classNameFor({ name: "git-diff" }, {})).toBe("marker marker-git-diff");
-    expect(classNameFor({ name: "git-diff", position: "right" }, { cls: "added" })).toBe(
-      "marker marker-git-diff right added",
+    expect(classNameFor({ name: "git-chunk" }, {})).toBe("marker marker-git-chunk");
+    expect(classNameFor({ name: "git-chunk", position: "right" }, { cls: "added" })).toBe(
+      "marker marker-git-chunk right added",
     );
     // The item's own position wins over the layer default.
-    expect(classNameFor({ name: "git-diff", position: "right" }, { position: "full" })).toBe(
-      "marker marker-git-diff full",
+    expect(classNameFor({ name: "git-chunk", position: "right" }, { position: "full" })).toBe(
+      "marker marker-git-chunk full",
     );
   });
 

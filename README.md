@@ -2,7 +2,7 @@
 
 Host the marker layers drawn on the scrollbar and minimap.
 
-Packages such as `git-diff` or `linter` register a layer descriptor here, the hub computes each layer's markers exactly once per editor, and the overview maps — `scrollmap` on the vertical scrollbar, `minimap` over the code — draw the shared result. Without at least one map installed the hub draws nothing itself.
+Packages such as `git-chunk` or `linter` register a layer descriptor here, the hub computes each layer's markers exactly once per editor, and the overview maps — `scrollmap` on the vertical scrollbar, `minimap` over the code — draw the shared result. Without at least one map installed the hub draws nothing itself.
 
 ## Features
 
